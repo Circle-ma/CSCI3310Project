@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,7 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import com.example.csci3310project.ui.theme.CSCI3310ProjectTheme
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
@@ -44,7 +45,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AppContent() {
-    val userName = remember { mutableStateOf("Guest") }  // Default to "Guest"
+    val userName = remember { mutableStateOf("Guest") }
     CSCI3310ProjectTheme {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             UserInterface(innerPadding, userName.value) { name -> userName.value = name }
@@ -62,13 +63,17 @@ fun UserInterface(innerPadding: PaddingValues, userName: String, updateUserName:
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Greeting(userName)
-        GoogleSignInButton(updateUserName)
+        if (userName == "Guest") {
+            GoogleSignInButton(updateUserName)
+        } else {
+            LogoutButton(updateUserName)
+        }
     }
 }
 
 @Composable
 fun Greeting(name: String) {
-    Text(text = "Hello $name!")
+    Text(text = "Hello $name!", style = MaterialTheme.typography.bodyMedium)
 }
 
 @Composable
@@ -80,21 +85,32 @@ fun GoogleSignInButton(updateUserName: (String) -> Unit) {
     }
 }
 
+@Composable
+fun LogoutButton(updateUserName: (String) -> Unit) {
+    val context = LocalContext.current
+    Button(onClick = { logout(context, updateUserName) }) {
+        Text(text = "Logout")
+    }
+}
+
 fun googleSignIn(
     context: Context, coroutineScope: CoroutineScope, updateUserName: (String) -> Unit
 ) {
     val credentialManager = CredentialManager.create(context)
     val nonce = generateNonce()
-
-    val request = GetCredentialRequest.Builder().addCredentialOption(
-        GetGoogleIdOption.Builder().setFilterByAuthorizedAccounts(true)
-            .setServerClientId("457810545963-uhsk9rjdhekir3q55af5b6j0hqsviv0b.apps.googleusercontent.com")
-            .setNonce(nonce).build()
-    ).build()
+    val googleIdOption = GetSignInWithGoogleOption.Builder("457810545963-uhsk9rjdhekir3q55af5b6j0hqsviv0b.apps.googleusercontent.com")
+        .setNonce(nonce).build()
+    val request = GetCredentialRequest.Builder().addCredentialOption(googleIdOption).build()
 
     coroutineScope.launch {
         handleCredentialRequest(context, credentialManager, request, updateUserName)
     }
+}
+
+fun logout(context: Context, updateUserName: (String) -> Unit) {
+    FirebaseAuth.getInstance().signOut()
+    updateUserName("Guest")
+    Toast.makeText(context, "Logged out successfully.", Toast.LENGTH_SHORT).show()
 }
 
 fun generateNonce(): String {
