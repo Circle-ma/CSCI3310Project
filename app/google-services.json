@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "457810545963",
+    "project_id": "csci3310project-3fe93",
+    "storage_bucket": "csci3310project-3fe93.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:457810545963:android:c2d8105aa7aa9fa5d3496e",
+        "android_client_info": {
+          "package_name": "com.example.csci3310project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzoyLuFsqx7Y4b7l3KJ9GdzUCSEASdogk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
