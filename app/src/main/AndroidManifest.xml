@@ -17,6 +17,11 @@
         android:theme="@style/Theme.CSCI3310Project"
         tools:targetApi="31">
         <activity
+            android:name=".MapTestActivity"
+            android:exported="true"
+            android:label="@string/title_activity_map_test"
+            android:theme="@style/Theme.CSCI3310Project" />
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.CSCI3310Project">
@@ -26,7 +31,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${GOOGLE_MAPS_API_KEY}"/>
     </application>
 
 </manifest>
