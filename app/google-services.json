@@ -12,7 +12,20 @@
           "package_name": "com.example.csci3310project"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "457810545963-i6gbqspaaph264s79o87aahci4015ama.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.csci3310project",
+            "certificate_hash": "e2e1bc9f5981840aad050516c1960b2a4b699cc1"
+          }
+        },
+        {
+          "client_id": "457810545963-uhsk9rjdhekir3q55af5b6j0hqsviv0b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAzoyLuFsqx7Y4b7l3KJ9GdzUCSEASdogk"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "457810545963-uhsk9rjdhekir3q55af5b6j0hqsviv0b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
