@@ -83,7 +83,7 @@ fun Greeting(name: String) {
 }
 
 @Composable
-fun Map(){
+fun Map(name: String){
     val singapore = LatLng(1.35, 103.87)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(singapore, 10f)
