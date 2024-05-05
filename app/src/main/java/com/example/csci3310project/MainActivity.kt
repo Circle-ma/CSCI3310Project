@@ -1,5 +1,6 @@
 package com.example.csci3310project
 
+import FirestoreRepository
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,6 +11,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.csci3310project.ui.theme.CSCI3310ProjectTheme
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 
 
 class MainActivity : ComponentActivity() {
@@ -28,16 +31,23 @@ fun AppNavigator() {
     val context = LocalContext.current
     val navController = rememberNavController()
     val authController = remember { AuthController(navController) }
+    val firestoreRepository = remember { FirestoreRepository(Firebase.firestore) }
 
     NavHost(navController = navController, startDestination = "login") {
         composable("login") {
             LoginView(authController, context)
         }
         composable("home") {
-            HomeView(authController)
+            HomeView(authController) {
+                navController.navigate("trip")
+            }
+        }
+        composable("trip") {
+            TripView(firestoreRepository)
         }
     }
 }
+
 
 
 
