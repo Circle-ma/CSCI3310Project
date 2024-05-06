@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.viewinterop.AndroidView
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.MapView
+import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 import java.util.Locale
+
 fun generateFakeEvents(): List<Event> {
     val events = mutableListOf<Event>()
     val locations = listOf(
@@ -32,52 +34,39 @@ fun generateFakeEvents(): List<Event> {
     return events
 }
 
+// Constants
+private val DEFAULT_LOCATION = LatLng(22.3193, 114.1694) // Default to Hong Kong
+private const val DEFAULT_ZOOM = 10f
 @Composable
 fun MapWithMarkers(events: List<Event>?) {
     val context = LocalContext.current
-
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(DEFAULT_LOCATION, DEFAULT_ZOOM)
+    }
     val eventsData = if (events == null)
     {
         generateFakeEvents()
     }else{
         events
     }
-
-    AndroidView(
+    GoogleMap(
         modifier = Modifier.fillMaxSize(),
-        factory = { context ->
-            val mapView = MapView(context).apply {
-                // Initialize Google Maps
-                onCreate(null)
-                getMapAsync { googleMap ->
-                    // Add markers for each event location
-                    eventsData.forEach { event ->
-                        val location = event.location?.let { getLocationFromAddress(context, it) }
-                        location?.let {
-                            val latLng = LatLng(it.latitude, it.longitude)
-                            googleMap.addMarker(
-                                MarkerOptions()
-                                    .position(latLng)
-                                    .title(event.location)
-                            )
-                        }
-                    }
-
-                    // Move camera to the first marker
-                    val firstEvent = eventsData.firstOrNull()
-                    firstEvent?.let {
-                        val firstLocation =
-                            it.location?.let { it1 -> getLocationFromAddress(context, it1) }
-                        firstLocation?.let {
-                            val latLng = LatLng(it.latitude, it.longitude)
-                            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10f))
-                        }
-                    }
-                }
+        cameraPositionState = cameraPositionState
+    ) {
+        eventsData.forEach { event ->
+            val location = event.location?.let { getLocationFromAddress(context, it) }
+            location?.let {
+                MarkerState(
+                    position = it
+                )
+            }?.let {
+                Marker(
+                    state = it,
+                    title = event.title
+                )
             }
-            mapView
         }
-    )
+    }
 }
 
 // You can use this function to get LatLng from address using Geocoder
