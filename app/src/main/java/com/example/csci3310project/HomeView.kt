@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun HomeView(authController: AuthController, onNavigateToTrip: () -> Unit) {
+fun HomeView(authController: AuthController, onNavigateToTrip: () -> Unit,  onNavigateToFakeMap: () -> Unit) {
     authController.user?.let { user ->
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -28,6 +28,9 @@ fun HomeView(authController: AuthController, onNavigateToTrip: () -> Unit) {
             Spacer(modifier = Modifier.height(8.dp))
             Button(onClick = onNavigateToTrip) {
                 Text("Plan a Trip")
+            }
+            Button(onClick = onNavigateToFakeMap) {
+                Text("Fake Map")
             }
         }
     }

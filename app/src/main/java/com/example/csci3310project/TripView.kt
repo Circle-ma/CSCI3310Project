@@ -1,6 +1,6 @@
 package com.example.csci3310project
 
-import FirestormRepository
+import FirestoreRepository
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,7 +25,7 @@ import java.text.DateFormat
 import java.text.ParseException
 
 @Composable
-fun TripView(firestoreRepository: FirestormRepository) {
+fun TripView(firestoreRepository: FirestoreRepository) {
     var tripTitle by remember { mutableStateOf("") }
     var startDate by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var endDate by remember { mutableLongStateOf(System.currentTimeMillis()) }

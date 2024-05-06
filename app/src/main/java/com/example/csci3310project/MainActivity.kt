@@ -38,12 +38,19 @@ fun AppNavigator() {
             LoginView(authController, context)
         }
         composable("home") {
-            HomeView(authController) {
-                navController.navigate("trip")
-            }
+//            HomeView(authController) {
+//                navController.navigate("trip")
+//            }
+            HomeView(authController,
+                onNavigateToTrip = { navController.navigate("trip") },
+                onNavigateToFakeMap = { navController.navigate("map") }
+            )
         }
         composable("trip") {
             TripView(firestoreRepository)
+        }
+        composable("map") {
+            MapWithMarkers(null)
         }
     }
 }

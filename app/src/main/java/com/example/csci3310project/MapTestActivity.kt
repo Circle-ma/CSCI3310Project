@@ -4,39 +4,47 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
-import android.location.LocationListener
 import android.location.LocationManager
-import android.os.Build
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.ActivityCompat
-import com.example.csci3310project.ui.theme.CSCI3310ProjectTheme
+import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.LocationSource
+import com.google.android.gms.maps.LocationSource.OnLocationChangedListener
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.rememberCameraPositionState
 
-var TAG = "MapTesting"
+private const val TAG = "MapTestActivity"
+private const val zoom = 8f
 
 class MapTestActivity : ComponentActivity() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -44,85 +52,96 @@ class MapTestActivity : ComponentActivity() {
     private lateinit var locationManager: LocationManager
     private lateinit var locationCallback: LocationCallback
     private lateinit var locationRequest: com.google.android.gms.location.LocationRequest
+    private val locationSource = MyLocationSource()
 
-    @RequiresApi(Build.VERSION_CODES.S)
+    private var currentLocation = Location("MyLocationProvider")
+    private val locationState = mutableStateOf(currentLocation)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            CSCI3310ProjectTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting2(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
-        }
-        val locationPermissionRequest = registerForActivityResult(
-            ActivityResultContracts.RequestMultiplePermissions()
-        ) { permissions ->
-            when {
-                permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false) -> {
-                    // Precise location access granted.
-                    Log.d(TAG,"Precise location access granted.")
-                }
-                permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> {
-                    // Only approximate location access granted.
-                    Log.d(TAG,"Only approximate location access granted.")
-                } else -> {
-                // No location access granted.
-                Log.e(TAG,"No location access granted.")
-            }
-            }
-        }
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 for (location in locationResult.locations) {
                     // Use the location object here to update your UI or data
+                    locationState.value = location
                     Log.d(TAG, "Location: ${location.latitude}, ${location.longitude}")
                 }
             }
         }
-        locationRequest = com.google.android.gms.location.LocationRequest.Builder(10000)
+        locationRequest = LocationRequest.Builder(10000)
             .setMinUpdateIntervalMillis(5000)
             .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
             .build()
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            locationPermissionRequest.launch(arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION))
-            return
-        }
-        fusedLocationClient.lastLocation
-            .addOnSuccessListener { location : Location? ->
-                // Got last known location. In some rare situations this can be null.
-                Log.d(TAG,"Last location: ${location}")
+
+        setContent {
+            var isMapLoaded by remember { mutableStateOf(false) }
+
+            // To control and observe the map camera
+            val cameraPositionState = rememberCameraPositionState {
+                position = CameraPosition.fromLatLngZoom(LatLng(22.302711, 114.177216), 11f)
             }
-//        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500L, 0f, locationListener)
-//        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 500L, 0f, locationListener)
-        startLocationUpdates();
+
+            // To show blue dot on map
+            val mapProperties by remember { mutableStateOf(MapProperties(isMyLocationEnabled = true)) }
+
+            // Update blue dot and camera when the location changes
+            LaunchedEffect(locationState.value) {
+                Log.d(TAG, "Updating blue dot on map...")
+                locationSource.onLocationChanged(locationState.value)
+
+                Log.d(TAG, "Updating camera position...")
+                val cameraPosition = CameraPosition.fromLatLngZoom(
+                    LatLng(locationState.value.latitude, locationState.value.longitude),
+                    zoom
+                )
+                cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(cameraPosition), 1_000)
+            }
+
+            // Detect when the map starts moving and print the reason
+            LaunchedEffect(cameraPositionState.isMoving) {
+                if (cameraPositionState.isMoving) {
+                    Log.d(TAG, "Map camera started moving due to ${cameraPositionState.cameraMoveStartedReason.name}")
+                }
+            }
+
+            Box(Modifier.fillMaxSize()) {
+                GoogleMap(
+                    modifier = Modifier.matchParentSize(),
+                    cameraPositionState = cameraPositionState,
+                    onMapLoaded = {
+                        isMapLoaded = true
+                    },
+                    // This listener overrides the behavior for the location button. It is intended to be used when a
+                    // custom behavior is needed.
+                    onMyLocationButtonClick = {  Log.d(TAG,"Overriding the onMyLocationButtonClick with this Log"); true },
+                    locationSource = locationSource,
+                    properties = mapProperties
+                )
+                if (!isMapLoaded) {
+                    AnimatedVisibility(
+                        modifier = Modifier
+                            .matchParentSize(),
+                        visible = !isMapLoaded,
+                        enter = EnterTransition.None,
+                        exit = fadeOut()
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .background(Color(ContextCompat.getColor(LocalContext.current, R.color.blue)))
+                                .wrapContentSize()
+                        )
+                    }
+                }
+            }
+        }
+        startLocationUpdates()
     }
+
     override fun onResume() {
         super.onResume()
         startLocationUpdates()
-//        if (requestingLocationUpdates) startLocationUpdates()
     }
 
     override fun onPause() {
@@ -149,55 +168,21 @@ class MapTestActivity : ComponentActivity() {
             locationCallback,
             Looper.getMainLooper())
     }
-
-    private val locationListener: LocationListener = object : LocationListener {
-        override fun onLocationChanged(location: Location) {
-            // Called when a new location is found by the network location provider.
-            // Use location to update your UI or data
-            Log.d(TAG, "Updated location: ${location}");
-        }
-
-        override fun onStatusChanged(provider: String, status: Int, extras: Bundle) {}
-
-        override fun onProviderEnabled(provider: String) {}
-
-        override fun onProviderDisabled(provider: String) {}
-    }
-
-//    TODO: Save the state of the activity
-}
-@Composable
-fun Map(name: String) {
-    val singapore = LatLng(1.35, 103.87)
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(singapore, 10f)
-    }
-    GoogleMap(
-        modifier = Modifier.fillMaxSize(),
-        cameraPositionState = cameraPositionState
-    ) {
-        Marker(
-            state = MarkerState(position = singapore),
-            title = "Singapore",
-            snippet = "Marker in Singapore"
-        )
-    }
 }
 
+private class MyLocationSource : LocationSource {
 
-@Composable
-fun Greeting2(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-    Map(name = "Android")
-}
+    private var listener: OnLocationChangedListener? = null
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    CSCI3310ProjectTheme {
-        Greeting2("Android")
+    override fun activate(listener: OnLocationChangedListener) {
+        this.listener = listener
+    }
+
+    override fun deactivate() {
+        listener = null
+    }
+
+    fun onLocationChanged(location: Location) {
+        listener?.onLocationChanged(location)
     }
 }
