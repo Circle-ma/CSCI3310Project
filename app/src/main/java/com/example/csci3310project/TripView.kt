@@ -117,9 +117,14 @@ fun TripDetailsView(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                "Join Code: ${currentTrip.joinCode}",
-                style = MaterialTheme.typography.headlineSmall,
+                "Trip: ${currentTrip.title}",
+                style = MaterialTheme.typography.headlineLarge,
             )
+            Text(
+                "Join Code: ${currentTrip.joinCode}",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+
             Spacer(modifier = Modifier.height(10.dp))
             TextField(value = editableTitle,
                 onValueChange = { editableTitle = it },
