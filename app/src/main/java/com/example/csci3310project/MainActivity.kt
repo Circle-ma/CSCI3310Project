@@ -1,6 +1,5 @@
 package com.example.csci3310project
 
-import FirestoreRepository
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -30,24 +29,25 @@ class MainActivity : ComponentActivity() {
 fun AppNavigator() {
     val context = LocalContext.current
     val navController = rememberNavController()
-    val authController = remember { AuthController(navController) }
     val firestoreRepository = remember { FirestoreRepository(Firebase.firestore) }
+    val authController = remember { AuthController(navController) }
 
     NavHost(navController = navController, startDestination = "login") {
         composable("login") {
             LoginView(authController, context)
         }
         composable("home") {
-//            HomeView(authController) {
-//                navController.navigate("trip")
-//            }
             HomeView(authController,
+                firestoreRepository,
+                navController,
                 onNavigateToTrip = { navController.navigate("trip") },
-                onNavigateToFakeMap = { navController.navigate("map") }
-            )
+                onNavigateToFakeMap = { navController.navigate("map") })
         }
         composable("trip") {
-            TripView(firestoreRepository)
+            TripView(authController, firestoreRepository, navController)
+        }
+        composable("tripDetails/{tripId}") { backStackEntry ->
+            TripDetailsView(backStackEntry.arguments?.getString("tripId")!!, firestoreRepository)
         }
         composable("map") {
             MapWithMarkers(null)

@@ -62,7 +62,10 @@ class AuthController(private val navController: NavController) {
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         val firebaseUser = task.result?.user
-                        user = User(firebaseUser?.displayName ?: "Anonymous")
+                        user = User(
+                            firebaseUser?.uid ?: UUID.randomUUID().toString(), // Use Firebase UID
+                            firebaseUser?.displayName ?: "Anonymous"
+                        )
                         navController.navigate("home") {
                             popUpTo("login") { inclusive = true }
                         }
@@ -74,4 +77,5 @@ class AuthController(private val navController: NavController) {
                 }
         }
     }
+
 }
