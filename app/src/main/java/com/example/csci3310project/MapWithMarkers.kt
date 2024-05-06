@@ -11,7 +11,6 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
@@ -63,7 +62,7 @@ fun generateFakeEvents(): List<Event> {
 private val DEFAULT_LOCATION = LatLng(22.3193, 114.1694) // Default to Hong Kong
 private const val DEFAULT_ZOOM = 10f
 @Composable
-fun MapWithMarkers(events: List<Event>?) {
+fun MapWithMarkers(events: List<Event>?, modifier: Modifier) {
     val TAG = "Map"
     var isMapLoaded by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -83,7 +82,9 @@ fun MapWithMarkers(events: List<Event>?) {
         }
         false
     }
-    Box(Modifier.fillMaxSize()) {
+    Box(
+        modifier
+    ) {
         GoogleMap(
             modifier = Modifier.matchParentSize(),
             cameraPositionState = cameraPositionState,

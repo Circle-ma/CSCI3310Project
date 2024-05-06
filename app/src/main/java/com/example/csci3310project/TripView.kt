@@ -117,6 +117,12 @@ fun TripDetailsView(
                 "Period: ${formatDate(currentTrip.startDate)} - ${formatDate(currentTrip.endDate)}",
                 style = MaterialTheme.typography.bodyMedium,
             )
+            MapWithMarkers(
+                events = null,
+                modifier = Modifier
+                        .fillMaxSize()
+                        .height(200.dp)
+            )
             Spacer(modifier = Modifier.height(10.dp))
 
             Button(

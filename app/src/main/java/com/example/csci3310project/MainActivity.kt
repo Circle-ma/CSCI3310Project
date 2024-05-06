@@ -3,8 +3,10 @@ package com.example.csci3310project
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -57,7 +59,10 @@ fun AppNavigator() {
             )
         }
         composable("map") {
-            MapWithMarkers(null)
+            MapWithMarkers(
+                events = null,
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 }
