@@ -4,13 +4,11 @@ import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -105,11 +103,6 @@ fun TripDetailsView(
     }
 
     trip?.let { currentTrip ->
-        var editableTitle by remember { mutableStateOf(currentTrip.title) }
-        var editableDestination by remember { mutableStateOf(currentTrip.destination) }
-        var editableStartDate by remember { mutableLongStateOf(currentTrip.startDate) }
-        var editableEndDate by remember { mutableLongStateOf(currentTrip.endDate) }
-
         Column(
             modifier = Modifier
                 .padding(16.dp)
@@ -117,70 +110,48 @@ fun TripDetailsView(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                "Trip: ${currentTrip.title}",
-                style = MaterialTheme.typography.headlineLarge,
+                "Trip: ${currentTrip.title} (${currentTrip.destination})",
+                style = MaterialTheme.typography.headlineMedium,
             )
             Text(
-                "Join Code: ${currentTrip.joinCode}",
-                style = MaterialTheme.typography.bodyLarge,
+                "Period: ${formatDate(currentTrip.startDate)} - ${formatDate(currentTrip.endDate)}",
+                style = MaterialTheme.typography.bodyMedium,
             )
+            Spacer(modifier = Modifier.height(10.dp))
 
-            Spacer(modifier = Modifier.height(10.dp))
-            TextField(value = editableTitle,
-                onValueChange = { editableTitle = it },
-                label = { Text("Title") },
-                singleLine = true
-            )
-            TextField(value = editableDestination,
-                onValueChange = { editableDestination = it },
-                label = { Text("Destination") },
-                singleLine = true
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            DateInput("Start Date", editableStartDate) { newDate -> editableStartDate = newDate }
-            DateInput("End Date", editableEndDate) { newDate -> editableEndDate = newDate }
+            Button(
+                onClick = { navController.navigate("editTrip/${tripId}") },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Modify Trip Details")
+            }
+
+
             Spacer(modifier = Modifier.height(20.dp))
-            Row {
-                Button(
-                    onClick = {
-                        val updatedTrip = currentTrip.copy(
-                            title = editableTitle,
-                            destination = editableDestination,
-                            startDate = editableStartDate,
-                            endDate = editableEndDate
-                        )
-                        firestoreRepository.updateTrip(tripId, updatedTrip) { isSuccess ->
-                            if (isSuccess) {
-                                Toast.makeText(context, "Trip updated", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(context, "Failed to update trip", Toast.LENGTH_SHORT)
-                                    .show()
-                            }
+            Button(
+                onClick = {
+                    firestoreRepository.deleteTrip(tripId) { isSuccess ->
+                        if (isSuccess) {
+                            navController.popBackStack()
+                            Toast.makeText(context, "Trip deleted", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Failed to delete trip", Toast.LENGTH_SHORT)
+                                .show()
                         }
-                    }, modifier = Modifier.weight(1f)
-                ) {
-                    Text("Save Changes")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = {
-                        firestoreRepository.deleteTrip(tripId) { isSuccess ->
-                            if (isSuccess) {
-                                navController.popBackStack()
-                                Toast.makeText(context, "Trip deleted", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(context, "Failed to delete trip", Toast.LENGTH_SHORT)
-                                    .show()
-                            }
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text("Delete Trip")
-                }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Delete Trip")
             }
         }
     } ?: Text("Loading Trip Details...", style = MaterialTheme.typography.headlineSmall)
+}
+
+fun formatDate(timestamp: Long): String {
+    // Use a date formatter to convert timestamp to a human-readable format
+    val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    return formatter.format(Date(timestamp))
 }
 
 
@@ -217,6 +188,67 @@ fun DateInput(label: String, dateMillis: Long, onDateChanged: (Long) -> Unit) {
             },
         )
     }
+}
+
+@Composable
+fun EditTripDetailsView(
+    tripId: String, firestoreRepository: FirestoreRepository, navController: NavController
+) {
+    var trip by remember { mutableStateOf<Trip?>(null) }
+    val context = LocalContext.current
+
+    LaunchedEffect(key1 = tripId) {
+        firestoreRepository.getTripDetails(tripId) { updatedTrip ->
+            trip = updatedTrip
+        }
+    }
+
+    trip?.let { currentTrip ->
+        var editableTitle by remember { mutableStateOf(currentTrip.title) }
+        var editableDestination by remember { mutableStateOf(currentTrip.destination) }
+        var editableStartDate by remember { mutableLongStateOf(currentTrip.startDate) }
+        var editableEndDate by remember { mutableLongStateOf(currentTrip.endDate) }
+
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+            TextField(value = editableTitle,
+                onValueChange = { editableTitle = it },
+                label = { Text("Title") })
+            TextField(value = editableDestination,
+                onValueChange = { editableDestination = it },
+                label = { Text("Destination") })
+            DateInput("Start Date", editableStartDate) { newDate -> editableStartDate = newDate }
+            DateInput("End Date", editableEndDate) { newDate -> editableEndDate = newDate }
+
+            Spacer(modifier = Modifier.height(20.dp))
+            Button(
+                onClick = {
+                    val updatedTrip = currentTrip.copy(
+                        title = editableTitle,
+                        destination = editableDestination,
+                        startDate = editableStartDate,
+                        endDate = editableEndDate
+                    )
+                    firestoreRepository.updateTrip(tripId, updatedTrip) { isSuccess ->
+                        if (isSuccess) {
+                            navController.popBackStack()
+                            Toast.makeText(context, "Trip updated successfully", Toast.LENGTH_SHORT)
+                                .show()
+                        } else {
+                            Toast.makeText(context, "Failed to update trip", Toast.LENGTH_SHORT)
+                                .show()
+                        }
+                    }
+                }, modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Save Changes")
+            }
+        }
+    } ?: Text("Loading Trip Details...", style = MaterialTheme.typography.bodyLarge)
 }
 
 

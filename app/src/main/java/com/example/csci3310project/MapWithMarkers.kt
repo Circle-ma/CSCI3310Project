@@ -50,8 +50,10 @@ fun generateFakeEvents(): List<Event> {
             startTime = currentTimeMillis + (i * 3600000), // Start time 1 hour apart
             endTime = currentTimeMillis + ((i + 1) * 3600000), // End time 1 hour after start
             date = System.currentTimeMillis(),
+            travelMethod = TravelMethod.PUBLIC_TRANSPORT,
             location = locations[i - 1] + ", Hong Kong" // Assigning location from the list
         )
+
         events.add(event)
     }
     return events

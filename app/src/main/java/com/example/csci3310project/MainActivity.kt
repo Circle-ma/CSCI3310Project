@@ -51,11 +51,17 @@ fun AppNavigator() {
                 backStackEntry.arguments?.getString("tripId")!!, firestoreRepository, navController
             )
         }
+        composable("editTrip/{tripId}") { backStackEntry ->
+            EditTripDetailsView(
+                backStackEntry.arguments?.getString("tripId")!!, firestoreRepository, navController
+            )
+        }
         composable("map") {
             MapWithMarkers(null)
         }
     }
 }
+
 
 
 

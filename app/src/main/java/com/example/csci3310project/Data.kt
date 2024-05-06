@@ -22,11 +22,16 @@ fun generateJoinCode(): String {
 
 
 
+enum class TravelMethod {
+    WALK, CAR, PUBLIC_TRANSPORT
+}
+
 data class Event(
     val id: String = UUID.randomUUID().toString(),
     val title: String,
     val date: Long,
     val startTime: Long,
     val endTime: Long,
-    val location: String?
+    val location: String?,
+    val travelMethod: TravelMethod
 )
