@@ -47,7 +47,9 @@ fun AppNavigator() {
             TripView(authController, firestoreRepository, navController)
         }
         composable("tripDetails/{tripId}") { backStackEntry ->
-            TripDetailsView(backStackEntry.arguments?.getString("tripId")!!, firestoreRepository)
+            TripDetailsView(
+                backStackEntry.arguments?.getString("tripId")!!, firestoreRepository, navController
+            )
         }
         composable("map") {
             MapWithMarkers(null)
