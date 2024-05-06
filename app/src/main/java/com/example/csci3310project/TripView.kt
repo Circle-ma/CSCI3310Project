@@ -124,7 +124,12 @@ fun TripDetailsView(
                 "Join Code: ${currentTrip.joinCode}",
                 style = MaterialTheme.typography.bodyLarge,
             )
-
+            MapWithMarkers(
+                events = null,
+                modifier = Modifier
+                        .fillMaxSize()
+                        .height(200.dp)
+            )
             Spacer(modifier = Modifier.height(10.dp))
             TextField(value = editableTitle,
                 onValueChange = { editableTitle = it },
