@@ -47,6 +47,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -103,7 +107,9 @@ fun TripView(
 
 @Composable
 fun TripDetailsView(
-    tripId: String, firestoreRepository: FirestoreRepository, navController: NavController
+    tripId: String,
+    firestoreRepository: FirestoreRepository,
+    navController: NavController
 ) {
     var trip by remember { mutableStateOf<Trip?>(null) }
     val context = LocalContext.current
@@ -116,6 +122,7 @@ fun TripDetailsView(
     }
 
     trip?.let { currentTrip ->
+        val tripStartDate = Instant.ofEpochMilli(currentTrip.startDate).atZone(ZoneId.systemDefault()).toLocalDate()
         LazyColumn(
             modifier = Modifier
                 .padding(16.dp)
@@ -137,27 +144,40 @@ fun TripDetailsView(
                     Text("Edit Trip Details")
                 }
                 MapWithMarkers(
-                    events = null, modifier = Modifier
+                    events = null,
+                    modifier = Modifier
                         .fillMaxSize()
                         .height(200.dp)
                 )
                 Spacer(modifier = Modifier.height(10.dp))
             }
 
-            items(currentTrip.events.sortedWith(compareBy<Event> { it.date }.thenBy { it.startTime })) { event ->
-                EventItem(event = event,
-                    onEdit = { navController.navigate("editEvent/${event.id}/${tripId}") },
-                    onDelete = {
-                        firestoreRepository.deleteEventFromTrip(tripId, event.id) { isSuccess ->
-                            if (isSuccess) {
-                                Toast.makeText(context, "Event deleted", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(
-                                    context, "Failed to delete event", Toast.LENGTH_SHORT
-                                ).show()
+            // Grouping events by LocalDate and sorting by start time within each day
+            val groupedEvents = currentTrip.events.groupBy { event ->
+                Instant.ofEpochMilli(event.date).atZone(ZoneId.systemDefault()).toLocalDate()
+            }.mapValues { (_, events) ->
+                events.sortedBy { it.startTime }
+            }.toList().sortedBy { it.first }  // Sort by LocalDate to ensure order
+
+            groupedEvents.forEach { (date, events) ->
+                val dayNumber = ChronoUnit.DAYS.between(tripStartDate, date) + 1  // Calculate the day number
+                item {
+                    Text("Day $dayNumber: ${date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))}", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+                }
+                items(events) { event ->
+                    EventItem(event = event,
+                        onEdit = { navController.navigate("editEvent/${event.id}/${tripId}") },
+                        onDelete = {
+                            firestoreRepository.deleteEventFromTrip(tripId, event.id) { isSuccess ->
+                                if (isSuccess) {
+                                    Toast.makeText(context, "Event deleted", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "Failed to delete event", Toast.LENGTH_SHORT).show()
+                                }
                             }
                         }
-                    })
+                    )
+                }
             }
 
             item {
@@ -185,6 +205,10 @@ fun TripDetailsView(
         }
     } ?: Text("Loading Trip Details...", style = MaterialTheme.typography.headlineSmall)
 }
+
+
+
+
 
 
 @Composable
