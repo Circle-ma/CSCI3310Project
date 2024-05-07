@@ -2,6 +2,7 @@ package com.example.csci3310project
 
 import android.app.TimePickerDialog
 import android.os.Build
+import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
@@ -36,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -120,6 +122,7 @@ fun TripDetailsView(
     tripId: String, firestoreRepository: FirestoreRepository, navController: NavController
 ) {
     var trip by remember { mutableStateOf<Trip?>(null) }
+    val selectEventId: MutableState<String?> = mutableStateOf(null)
     val context = LocalContext.current
 
     // Fetch trip details once when the view appears
@@ -157,7 +160,8 @@ fun TripDetailsView(
                     modifier = Modifier
                         .fillMaxSize()
                         .height(200.dp),
-                    destination = currentTrip.destination
+                    destination = currentTrip.destination,
+                    selectEventId = selectEventId
                 )
                 Spacer(modifier = Modifier.height(10.dp))
             }
@@ -193,7 +197,12 @@ fun TripDetailsView(
                                     ).show()
                                 }
                             }
-                        })
+                        },
+                        onClick = {
+                            selectEventId.value = event.id
+                            Log.d("ARRRR",selectEventId.value.toString())
+                        }
+                    )
                 }
             }
 
@@ -225,11 +234,12 @@ fun TripDetailsView(
 
 
 @Composable
-fun EventItem(event: Event, onEdit: () -> Unit, onDelete: () -> Unit) {
+fun EventItem(event: Event, onEdit: () -> Unit, onDelete: () -> Unit, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp),
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier

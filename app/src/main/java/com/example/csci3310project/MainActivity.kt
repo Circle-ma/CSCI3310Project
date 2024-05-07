@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -66,7 +67,8 @@ fun AppNavigator() {
             MapWithMarkers(
                 events = null,
                 modifier = Modifier.fillMaxSize(),
-                destination = "Hong Kong"
+                destination = "Hong Kong",
+                selectEventId = mutableStateOf(null)
             )
         }
         composable("addEvent/{tripId}") { backStackEntry ->

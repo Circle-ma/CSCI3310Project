@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,7 +67,7 @@ private const val DEFAULT_ZOOM = 12f
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MapWithMarkers(destination: String, events: List<Event>?, modifier: Modifier) {
+fun MapWithMarkers(destination: String, events: List<Event>?, modifier: Modifier, selectEventId: MutableState<String?>) {
     val TAG = "Map"
     var isMapLoaded by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -86,6 +87,12 @@ fun MapWithMarkers(destination: String, events: List<Event>?, modifier: Modifier
     val bounds = calculateCameraBounds(locations)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(bounds.center, DEFAULT_ZOOM)
+    }
+    if(selectEventId.value != null)
+    {
+        val e = eventsData.find{it.id == selectEventId.value}
+        cameraPositionState.position = e?.location?.let { getLocationFromAddress(context, it, destination) }
+            ?.let { CameraPosition.fromLatLngZoom(it, DEFAULT_ZOOM) }!!
     }
     val markerClick: (Marker) -> Boolean = {
         Log.d(TAG, "${it.title} was clicked")
@@ -217,6 +224,10 @@ fun getLocationFromAddress(context: Context, strAddress: String, destination: St
 
 fun calculateCameraBounds(locations: List<LatLng>): LatLngBounds {
     val builder = LatLngBounds.Builder()
+    if(locations.isEmpty())
+    {
+        builder.include(LatLng(22.396428, 114.109497))
+    }
     locations.forEach { builder.include(it) }
     val bounds = builder.build()
 
