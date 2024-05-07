@@ -1,7 +1,9 @@
 package com.example.csci3310project
 
 import android.app.TimePickerDialog
+import android.os.Build
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -93,7 +95,13 @@ fun TripView(
             firestoreRepository.addTrip(trip, userId) { isSuccess, tripId ->
                 if (isSuccess && tripId != null) {
                     Toast.makeText(context, "Trip created. ID: $tripId", Toast.LENGTH_LONG).show()
-                    navController.navigate("tripDetails/$tripId")
+                    // Navigate to TripDetailsView and remove only this TripView from the back stack
+                    navController.navigate("tripDetails/$tripId") {
+                        // Pop only the TripView off the stack
+                        popUpTo(navController.currentBackStackEntry?.destination?.route ?: "tripView") {
+                            inclusive = true // This ensures TripView is removed from the stack
+                        }
+                    }
                 } else {
                     Toast.makeText(context, "Failed to create trip", Toast.LENGTH_SHORT).show()
                 }
@@ -101,15 +109,15 @@ fun TripView(
         }) {
             Text("Create Trip")
         }
+
     }
 }
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun TripDetailsView(
-    tripId: String,
-    firestoreRepository: FirestoreRepository,
-    navController: NavController
+    tripId: String, firestoreRepository: FirestoreRepository, navController: NavController
 ) {
     var trip by remember { mutableStateOf<Trip?>(null) }
     val context = LocalContext.current
@@ -122,7 +130,8 @@ fun TripDetailsView(
     }
 
     trip?.let { currentTrip ->
-        val tripStartDate = Instant.ofEpochMilli(currentTrip.startDate).atZone(ZoneId.systemDefault()).toLocalDate()
+        val tripStartDate =
+            Instant.ofEpochMilli(currentTrip.startDate).atZone(ZoneId.systemDefault()).toLocalDate()
         LazyColumn(
             modifier = Modifier
                 .padding(16.dp)
@@ -138,14 +147,13 @@ fun TripDetailsView(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Button(
-                    onClick = { navController.navigate("editTripDetails/$tripId") },
+                    onClick = { navController.navigate("editTrip/$tripId") },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Edit Trip Details")
                 }
                 MapWithMarkers(
-                    events = null,
-                    modifier = Modifier
+                    events = null, modifier = Modifier
                         .fillMaxSize()
                         .height(200.dp)
                 )
@@ -160,9 +168,14 @@ fun TripDetailsView(
             }.toList().sortedBy { it.first }  // Sort by LocalDate to ensure order
 
             groupedEvents.forEach { (date, events) ->
-                val dayNumber = ChronoUnit.DAYS.between(tripStartDate, date) + 1  // Calculate the day number
+                val dayNumber =
+                    ChronoUnit.DAYS.between(tripStartDate, date) + 1  // Calculate the day number
                 item {
-                    Text("Day $dayNumber: ${date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))}", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+                    Text(
+                        "Day $dayNumber: ${date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))}",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                    )
                 }
                 items(events) { event ->
                     EventItem(event = event,
@@ -170,13 +183,15 @@ fun TripDetailsView(
                         onDelete = {
                             firestoreRepository.deleteEventFromTrip(tripId, event.id) { isSuccess ->
                                 if (isSuccess) {
-                                    Toast.makeText(context, "Event deleted", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Event deleted", Toast.LENGTH_SHORT)
+                                        .show()
                                 } else {
-                                    Toast.makeText(context, "Failed to delete event", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context, "Failed to delete event", Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             }
-                        }
-                    )
+                        })
                 }
             }
 
@@ -205,10 +220,6 @@ fun TripDetailsView(
         }
     } ?: Text("Loading Trip Details...", style = MaterialTheme.typography.headlineSmall)
 }
-
-
-
-
 
 
 @Composable
@@ -570,6 +581,7 @@ fun TripItem(trip: Trip, onTripSelected: (String) -> Unit) {
         .clickable { onTripSelected(trip.id) }) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Trip: ${trip.title}", style = MaterialTheme.typography.headlineSmall)
+            Text("Destination: ${trip.destination}", style = MaterialTheme.typography.bodySmall)
             Text("Join Code: ${trip.joinCode}", style = MaterialTheme.typography.bodySmall)
         }
     }
