@@ -71,6 +71,7 @@ fun TripView(
     var destination by remember { mutableStateOf("") }
     val context = LocalContext.current
     val userId = authController.user?.id ?: ""
+    val userName = authController.user?.name ?: ""
 
     Column(
         modifier = Modifier
@@ -94,7 +95,7 @@ fun TripView(
                 endDate = endDate,
                 destination = destination
             )
-            firestoreRepository.addTrip(trip, userId) { isSuccess, tripId ->
+            firestoreRepository.addTrip(trip, userId, userName) { isSuccess, tripId ->
                 if (isSuccess && tripId != null) {
                     Toast.makeText(context, "Trip created. ID: $tripId", Toast.LENGTH_LONG).show()
                     // Navigate to TripDetailsView and remove only this TripView from the back stack
@@ -210,6 +211,9 @@ fun TripDetailsView(
                 Spacer(modifier = Modifier.height(10.dp))
                 Button(onClick = { navController.navigate("addEvent/$tripId") }) {
                     Text("Add Event")
+                }
+                Button(onClick = { navController.navigate("expenseDetails/$tripId") }) {
+                    Text("View Expenses")
                 }
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(

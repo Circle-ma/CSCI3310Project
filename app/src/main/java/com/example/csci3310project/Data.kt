@@ -11,6 +11,8 @@ data class Trip(
     val startDate: Long = System.currentTimeMillis(),
     val endDate: Long = System.currentTimeMillis(),
     val events: MutableList<Event> = mutableListOf(),
+    val expenses: MutableList<Expense> = mutableListOf(),
+    var participantsID: MutableList<String> = mutableListOf(),
     var participants: MutableList<String> = mutableListOf(),
     val destination: String = ""
 )
@@ -33,4 +35,13 @@ data class Event(
     var endTime: Long = System.currentTimeMillis() + 3600000, // Default to one hour later
     var location: String? = null,
     var travelMethod: TravelMethod = TravelMethod.WALK // Assume WALK as default
+)
+
+data class Expense(
+    val id: String = UUID.randomUUID().toString(),
+    var title: String = "",
+    var date: Long = System.currentTimeMillis(),
+    var amount: Double = 0.0,
+    var payer: String = "",
+    // var participants: List<String> = emptyList()
 )

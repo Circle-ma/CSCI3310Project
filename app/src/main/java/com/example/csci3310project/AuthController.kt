@@ -77,5 +77,4 @@ class AuthController(private val navController: NavController) {
                 }
         }
     }
-
 }

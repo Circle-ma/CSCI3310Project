@@ -1,11 +1,12 @@
 package com.example.csci3310project
 
+import android.util.Log
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
 class FirestoreRepository(private val db: FirebaseFirestore) {
     fun getUserTrips(userId: String, onUpdate: (List<Trip>) -> Unit) {
-        db.collection("trips").whereArrayContains("participants", userId)
+        db.collection("trips").whereArrayContains("participantsID", userId)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     onUpdate(emptyList())
@@ -17,8 +18,9 @@ class FirestoreRepository(private val db: FirebaseFirestore) {
             }
     }
 
-    fun addTrip(trip: Trip, userId: String, onComplete: (Boolean, String?) -> Unit) {
-        trip.participants.add(userId)  // Automatically add the creator to the participants list
+    fun addTrip(trip: Trip, userID: String, userName: String, onComplete: (Boolean, String?) -> Unit) {
+        trip.participantsID.add(userID)
+        trip.participants.add(userName)  // Automatically add the creator to the participants list
         trip.joinCode = generateJoinCode()  // Generate a unique join code for the trip
         val newTripRef = db.collection("trips").document(trip.id)
         newTripRef.set(trip).addOnSuccessListener {
@@ -122,5 +124,79 @@ class FirestoreRepository(private val db: FirebaseFirestore) {
             }
             true
         }.addOnSuccessListener { onComplete(true) }.addOnFailureListener { onComplete(false) }
+    }
+
+    fun addExpenseToTrip(tripId: String, expense: Expense, onComplete: (Boolean) -> Unit) {
+        db.collection("trips").document(tripId)
+            .update("expenses", FieldValue.arrayUnion(expense))
+            .addOnSuccessListener { onComplete(true) }
+            .addOnFailureListener { onComplete(false) }
+    }
+
+    fun updateExpenseInTrip(tripId: String, expense: Expense, onComplete: (Boolean) -> Unit) {
+        val tripRef = db.collection("trips").document(tripId)
+        db.runTransaction { transaction ->
+            val snapshot = transaction.get(tripRef)
+            val trip = snapshot.toObject(Trip::class.java)
+            trip?.expenses?.find { it.id == expense.id }?.apply {
+                title = expense.title
+                date = expense.date
+                amount = expense.amount
+                payer = expense.payer
+            }
+            if (trip != null) {
+                transaction.set(tripRef, trip)
+            }
+            true
+        }.addOnSuccessListener { onComplete(true) }
+            .addOnFailureListener { onComplete(false) }
+    }
+
+    fun getExpenseDetails(tripId: String, expenseId: String, onComplete: (Expense?) -> Unit) {
+        val tripRef = db.collection("trips").document(tripId)
+        tripRef.get().addOnSuccessListener { document ->
+            if (document.exists()) {
+                val trip = document.toObject(Trip::class.java)
+                val expense = trip?.expenses?.find { it.id == expenseId }
+                onComplete(expense)
+            } else {
+                onComplete(null) // Trip does not exist
+            }
+        }.addOnFailureListener {
+            onComplete(null) // Handle failure
+        }
+    }
+    fun deleteExpenseFromTrip(tripId: String, expenseId: String, onComplete: (Boolean) -> Unit) {
+        val tripRef = db.collection("trips").document(tripId)
+        db.runTransaction { transaction ->
+            val snapshot = transaction.get(tripRef)
+            val trip = snapshot.toObject(Trip::class.java)
+            trip?.expenses?.removeIf { it.id == expenseId }
+            if (trip != null) {
+                transaction.set(tripRef, trip)
+            }
+            true
+        }.addOnSuccessListener { onComplete(true) }
+            .addOnFailureListener { onComplete(false) }
+    }
+
+    fun getTripParticipants(tripId: String, onComplete: (List<String>) -> Unit) {
+        db.collection("trips").document(tripId).get().addOnSuccessListener { document ->
+            if (document.exists()) {
+                val trip = document.toObject(Trip::class.java)
+                val participants = trip?.participants ?: emptyList()
+                db.collection("users").whereIn("id", participants).get()
+                    .addOnSuccessListener {
+                        Log.d("FirestoreRepository", "Participants: $participants")
+                        onComplete(participants)
+                    }.addOnFailureListener {
+                        onComplete(emptyList())
+                    }
+            } else {
+                onComplete(emptyList()) // Trip does not exist
+            }
+        }.addOnFailureListener {
+            onComplete(emptyList()) // Handle failure
+        }
     }
 }

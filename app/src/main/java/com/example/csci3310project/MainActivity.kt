@@ -84,6 +84,24 @@ fun AppNavigator() {
                 navController
             )
         }
+        composable("addExpense/{tripId}") { backStackEntry ->
+            AddExpenseView(
+                backStackEntry.arguments?.getString("tripId")!!, firestoreRepository, navController
+            )
+        }
+        composable("editExpense/{expenseId}/{tripId}") { backStackEntry ->
+            EditExpenseView(
+                backStackEntry.arguments?.getString("expenseId")!!,
+                backStackEntry.arguments?.getString("tripId")!!,
+                firestoreRepository,
+                navController
+            )
+        }
+        composable("expenseDetails/{tripId}") { backStackEntry ->
+            ExpenseDetailsView(
+                backStackEntry.arguments?.getString("tripId")!!, firestoreRepository, navController
+            )
+        }
     }
 }
 
