@@ -87,4 +87,5 @@ dependencies {
     // Android 13 and below.
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0-alpha03")
     implementation("com.google.maps.android:maps-compose:4.4.1")
+    implementation("androidx.compose.material:material-icons-extended-android:1.6.7")
 }

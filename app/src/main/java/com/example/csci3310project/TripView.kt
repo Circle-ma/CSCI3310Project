@@ -1,23 +1,34 @@
 package com.example.csci3310project
 
+import android.app.TimePickerDialog
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -30,7 +41,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import java.text.SimpleDateFormat
@@ -95,7 +108,7 @@ fun TripDetailsView(
     var trip by remember { mutableStateOf<Trip?>(null) }
     val context = LocalContext.current
 
-    // Trigger loading the trip details once when the view appears
+    // Fetch trip details once when the view appears
     LaunchedEffect(key1 = tripId) {
         firestoreRepository.getTripDetails(tripId) { updatedTrip ->
             trip = updatedTrip
@@ -103,56 +116,304 @@ fun TripDetailsView(
     }
 
     trip?.let { currentTrip ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                "Trip: ${currentTrip.title} (${currentTrip.destination})",
-                style = MaterialTheme.typography.headlineMedium,
-            )
-            Text(
-                "Period: ${formatDate(currentTrip.startDate)} - ${formatDate(currentTrip.endDate)}",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            MapWithMarkers(
-                events = null,
-                modifier = Modifier
+            item {
+                Text(
+                    "Trip: ${currentTrip.title} (${currentTrip.destination})",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Text(
+                    "Period: ${formatDate(currentTrip.startDate)} - ${formatDate(currentTrip.endDate)}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Button(
+                    onClick = { navController.navigate("editTripDetails/$tripId") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Edit Trip Details")
+                }
+                MapWithMarkers(
+                    events = null, modifier = Modifier
                         .fillMaxSize()
                         .height(200.dp)
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Button(
-                onClick = { navController.navigate("editTrip/${tripId}") },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Modify Trip Details")
+                )
+                Spacer(modifier = Modifier.height(10.dp))
             }
 
-
-            Spacer(modifier = Modifier.height(20.dp))
-            Button(
-                onClick = {
-                    firestoreRepository.deleteTrip(tripId) { isSuccess ->
-                        if (isSuccess) {
-                            navController.popBackStack()
-                            Toast.makeText(context, "Trip deleted", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context, "Failed to delete trip", Toast.LENGTH_SHORT)
-                                .show()
+            items(currentTrip.events.sortedWith(compareBy<Event> { it.date }.thenBy { it.startTime })) { event ->
+                EventItem(event = event,
+                    onEdit = { navController.navigate("editEvent/${event.id}/${tripId}") },
+                    onDelete = {
+                        firestoreRepository.deleteEventFromTrip(tripId, event.id) { isSuccess ->
+                            if (isSuccess) {
+                                Toast.makeText(context, "Event deleted", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(
+                                    context, "Failed to delete event", Toast.LENGTH_SHORT
+                                ).show()
+                            }
                         }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Delete Trip")
+                    })
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(10.dp))
+                Button(onClick = { navController.navigate("addEvent/$tripId") }) {
+                    Text("Add Event")
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(
+                    onClick = {
+                        firestoreRepository.deleteTrip(tripId) { isSuccess ->
+                            if (isSuccess) {
+                                navController.popBackStack()
+                                Toast.makeText(context, "Trip deleted", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Failed to delete trip", Toast.LENGTH_SHORT)
+                                    .show()
+                            }
+                        }
+                    }, modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Delete Trip")
+                }
             }
         }
     } ?: Text("Loading Trip Details...", style = MaterialTheme.typography.headlineSmall)
 }
+
+
+@Composable
+fun EventItem(event: Event, onEdit: () -> Unit, onDelete: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = event.title, style = MaterialTheme.typography.headlineSmall
+                )
+                Text(
+                    text = "From ${formatTime(event.startTime)} to ${formatTime(event.endTime)}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "${formatDate(event.date)}, ${event.location}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "Travel by: ${event.travelMethod.name}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            IconButton(onClick = { onEdit() }) {
+                Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Event")
+            }
+            IconButton(onClick = { onDelete() }) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete Event",
+                    tint = Color.Red
+                )
+            }
+        }
+    }
+}
+
+fun formatTime(timeMillis: Long): String {
+    val formatter = SimpleDateFormat("h:mm a", Locale.getDefault())
+    return formatter.format(Date(timeMillis))
+}
+
+@Composable
+fun AddEventView(
+    tripId: String, firestoreRepository: FirestoreRepository, navController: NavController
+) {
+    var title by remember { mutableStateOf("") }
+    var date by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var startTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var endTime by remember { mutableLongStateOf(System.currentTimeMillis() + 3600000) } // +1 hour
+    var location by remember { mutableStateOf("") }
+    var travelMethod by remember { mutableStateOf(TravelMethod.WALK) }
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TextField(value = title, onValueChange = { title = it }, label = { Text("Event Title") })
+        DateInput("Event Date", date) { newDate -> date = newDate }
+        TimeInput("Start Time", startTime) { newStartTime -> startTime = newStartTime }
+        TimeInput("End Time", endTime) { newEndTime -> endTime = newEndTime }
+        TextField(value = location, onValueChange = { location = it }, label = { Text("Location") })
+        DropdownMenuForTravelMethod(travelMethod) { newMethod -> travelMethod = newMethod }
+
+        Button(onClick = {
+            val newEvent = Event(
+                title = title,
+                date = date,
+                startTime = startTime,
+                endTime = endTime,
+                location = location,
+                travelMethod = travelMethod
+            )
+            firestoreRepository.addEventToTrip(tripId, newEvent) { isSuccess ->
+                if (isSuccess) {
+                    Toast.makeText(context, "Event added", Toast.LENGTH_SHORT).show()
+                    navController.popBackStack()
+                } else {
+                    Toast.makeText(context, "Error adding event", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }, modifier = Modifier.fillMaxWidth()) {
+            Text("Add Event")
+        }
+    }
+}
+
+@Composable
+fun DropdownMenuForTravelMethod(selectedMethod: TravelMethod, onSelect: (TravelMethod) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val methods = TravelMethod.entries.toTypedArray()  // Correct way to get all values from an enum
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentSize(Alignment.TopStart)
+    ) {
+        Text(
+            text = "Travel method: $selectedMethod",
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = true },
+            textAlign = TextAlign.Left
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            methods.forEach { method ->
+                DropdownMenuItem({ Text(text = method.name) }, onClick = {
+                    onSelect(method)
+                    expanded = false
+                })
+            }
+        }
+    }
+}
+
+
+@Composable
+fun EditEventView(
+    eventId: String,
+    tripId: String,
+    firestoreRepository: FirestoreRepository,
+    navController: NavController
+) {
+    var event by remember { mutableStateOf<Event?>(null) }
+    val context = LocalContext.current
+
+    LaunchedEffect(key1 = eventId) {
+        firestoreRepository.getEventDetails(tripId, eventId) { fetchedEvent ->
+            event = fetchedEvent
+        }
+    }
+
+    event?.let { currentEvent ->
+        var title by remember { mutableStateOf(currentEvent.title) }
+        var date by remember { mutableLongStateOf(currentEvent.date) }
+        var startTime by remember { mutableLongStateOf(currentEvent.startTime) }
+        var endTime by remember { mutableLongStateOf(currentEvent.endTime) }
+        var location by remember { mutableStateOf(currentEvent.location ?: "") }
+        var travelMethod by remember { mutableStateOf(currentEvent.travelMethod) }
+
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            TextField(value = title,
+                onValueChange = { title = it },
+                label = { Text("Event Title") })
+            DateInput("Event Date", date) { newDate -> date = newDate }
+            TimeInput("Start Time", startTime) { newStartTime -> startTime = newStartTime }
+            TimeInput("End Time", endTime) { newEndTime -> endTime = newEndTime }
+            TextField(value = location,
+                onValueChange = { location = it },
+                label = { Text("Location") })
+            DropdownMenuForTravelMethod(travelMethod) { newMethod -> travelMethod = newMethod }
+
+            Button(onClick = {
+                val updatedEvent = currentEvent.copy(
+                    title = title,
+                    date = date,
+                    startTime = startTime,
+                    endTime = endTime,
+                    location = location,
+                    travelMethod = travelMethod
+                )
+                firestoreRepository.updateEventInTrip(tripId, updatedEvent) { isSuccess ->
+                    if (isSuccess) {
+                        Toast.makeText(context, "Event updated", Toast.LENGTH_SHORT).show()
+                        navController.popBackStack()
+                    } else {
+                        Toast.makeText(context, "Failed to update event", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }, modifier = Modifier.fillMaxWidth()) {
+                Text("Save Changes")
+            }
+        }
+    } ?: Text("Loading Event Details...", style = MaterialTheme.typography.headlineSmall)
+}
+
+@Composable
+fun TimeInput(label: String, timeMillis: Long, onTimeChanged: (Long) -> Unit) {
+    val context = LocalContext.current
+    var time by remember { mutableStateOf(Date(timeMillis)) }
+    val timeString = remember(time) { SimpleDateFormat("h:mm a", Locale.getDefault()).format(time) }
+
+    val timePickerDialog = remember(time) {
+        TimePickerDialog(
+            context, { _, hourOfDay, minute ->
+                val calendar = Calendar.getInstance()
+                calendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
+                calendar.set(Calendar.MINUTE, minute)
+                time = calendar.time
+                onTimeChanged(calendar.timeInMillis)
+            }, time.hours, time.minutes, false
+        )
+    }
+
+    TextField(
+        value = timeString,
+        onValueChange = {},
+        label = { Text(label) },
+        readOnly = true,
+        trailingIcon = {
+            Icon(Icons.Filled.AccessTime,
+                contentDescription = "Select Time",
+                modifier = Modifier.clickable { timePickerDialog.show() })
+        },
+    )
+}
+
 
 fun formatDate(timestamp: Long): String {
     // Use a date formatter to convert timestamp to a human-readable format
@@ -257,20 +518,6 @@ fun EditTripDetailsView(
     } ?: Text("Loading Trip Details...", style = MaterialTheme.typography.bodyLarge)
 }
 
-
-@Composable
-fun EventCard(event: Event) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Event: ${event.title}", style = MaterialTheme.typography.bodyMedium)
-            // Include other event details and edit functionalities
-        }
-    }
-}
 
 @Composable
 fun TripsListView(

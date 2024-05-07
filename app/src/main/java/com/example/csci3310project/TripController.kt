@@ -75,8 +75,54 @@ class FirestoreRepository(private val db: FirebaseFirestore) {
         db.collection("trips").document(tripId).update("events", FieldValue.arrayUnion(event))
             .addOnSuccessListener { onComplete(true) }.addOnFailureListener { onComplete(false) }
     }
-    private fun generateJoinCode(): String {
-        val allowedChars = ('A'..'Z') + ('0'..'9')
-        return (1..6).map { allowedChars.random() }.joinToString("")
+
+    fun updateEventInTrip(tripId: String, event: Event, onComplete: (Boolean) -> Unit) {
+        val tripRef = db.collection("trips").document(tripId)
+        db.runTransaction { transaction ->
+            val snapshot = transaction.get(tripRef)
+            val trip = snapshot.toObject(Trip::class.java)
+            trip?.events?.find { it.id == event.id }?.apply {
+                title = event.title
+                date = event.date
+                startTime = event.startTime
+                endTime = event.endTime
+                location = event.location
+                travelMethod = event.travelMethod
+            }
+            if (trip != null) {
+                transaction.set(tripRef, trip)
+            }
+            true
+        }.addOnSuccessListener { onComplete(true) }
+            .addOnFailureListener { onComplete(false) }
+    }
+
+    fun getEventDetails(tripId: String, eventId: String, onComplete: (Event?) -> Unit) {
+        val tripRef = db.collection("trips").document(tripId)
+        tripRef.get().addOnSuccessListener { document ->
+            if (document.exists()) {
+                val trip = document.toObject(Trip::class.java)
+                val event = trip?.events?.find { it.id == eventId }
+                onComplete(event)
+            } else {
+                onComplete(null) // Trip does not exist
+            }
+        }.addOnFailureListener {
+            onComplete(null) // Handle failure
+        }
+    }
+
+    fun deleteEventFromTrip(tripId: String, eventId: String, onComplete: (Boolean) -> Unit) {
+        val tripRef = db.collection("trips").document(tripId)
+        db.runTransaction { transaction ->
+            val snapshot = transaction.get(tripRef)
+            val trip = snapshot.toObject(Trip::class.java)
+            trip?.events?.removeIf { it.id == eventId }
+            if (trip != null) {
+                transaction.set(tripRef, trip)
+            }
+            true
+        }.addOnSuccessListener { onComplete(true) }
+            .addOnFailureListener { onComplete(false) }
     }
 }

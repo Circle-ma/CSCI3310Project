@@ -60,8 +60,20 @@ fun AppNavigator() {
         }
         composable("map") {
             MapWithMarkers(
-                events = null,
-                modifier = Modifier.fillMaxSize()
+                events = null, modifier = Modifier.fillMaxSize()
+            )
+        }
+        composable("addEvent/{tripId}") { backStackEntry ->
+            AddEventView(
+                backStackEntry.arguments?.getString("tripId")!!, firestoreRepository, navController
+            )
+        }
+        composable("editEvent/{eventId}/{tripId}") { backStackEntry ->
+            EditEventView(
+                backStackEntry.arguments?.getString("eventId")!!,
+                backStackEntry.arguments?.getString("tripId")!!,
+                firestoreRepository,
+                navController
             )
         }
     }

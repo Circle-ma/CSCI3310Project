@@ -21,17 +21,16 @@ fun generateJoinCode(): String {
 }
 
 
-
 enum class TravelMethod {
     WALK, CAR, PUBLIC_TRANSPORT
 }
 
 data class Event(
     val id: String = UUID.randomUUID().toString(),
-    val title: String,
-    val date: Long,
-    val startTime: Long,
-    val endTime: Long,
-    val location: String?,
-    val travelMethod: TravelMethod
+    var title: String = "",
+    var date: Long = System.currentTimeMillis(),
+    var startTime: Long = System.currentTimeMillis(),
+    var endTime: Long = System.currentTimeMillis() + 3600000, // Default to one hour later
+    var location: String? = null,
+    var travelMethod: TravelMethod = TravelMethod.WALK // Assume WALK as default
 )
