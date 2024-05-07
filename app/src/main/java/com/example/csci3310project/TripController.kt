@@ -95,8 +95,7 @@ class FirestoreRepository(private val db: FirebaseFirestore) {
                 transaction.set(tripRef, trip)
             }
             true
-        }.addOnSuccessListener { onComplete(true) }
-            .addOnFailureListener { onComplete(false) }
+        }.addOnSuccessListener { onComplete(true) }.addOnFailureListener { onComplete(false) }
     }
 
     fun getEventDetails(tripId: String, eventId: String, onComplete: (Event?) -> Unit) {
@@ -124,8 +123,7 @@ class FirestoreRepository(private val db: FirebaseFirestore) {
                 transaction.set(tripRef, trip)
             }
             true
-        }.addOnSuccessListener { onComplete(true) }
-            .addOnFailureListener { onComplete(false) }
+        }.addOnSuccessListener { onComplete(true) }.addOnFailureListener { onComplete(false) }
     }
 
     fun addExpenseToTrip(tripId: String, expense: Expense, onComplete: (Boolean) -> Unit) {
