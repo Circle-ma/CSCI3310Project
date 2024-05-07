@@ -64,7 +64,9 @@ fun AppNavigator() {
         }
         composable("map") {
             MapWithMarkers(
-                events = null, modifier = Modifier.fillMaxSize()
+                events = null,
+                modifier = Modifier.fillMaxSize(),
+                destination = "Hong Kong"
             )
         }
         composable("addEvent/{tripId}") { backStackEntry ->

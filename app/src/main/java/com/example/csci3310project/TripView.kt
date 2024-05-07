@@ -153,9 +153,11 @@ fun TripDetailsView(
                     Text("Edit Trip Details")
                 }
                 MapWithMarkers(
-                    events = null, modifier = Modifier
+                    events = currentTrip.events,
+                    modifier = Modifier
                         .fillMaxSize()
-                        .height(200.dp)
+                        .height(200.dp),
+                    destination = currentTrip.destination
                 )
                 Spacer(modifier = Modifier.height(10.dp))
             }
