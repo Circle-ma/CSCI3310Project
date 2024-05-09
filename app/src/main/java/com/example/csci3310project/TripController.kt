@@ -30,15 +30,19 @@ class FirestoreRepository(private val db: FirebaseFirestore) {
         }
     }
 
-    fun joinTripByCode(joinCode: String, userId: String, onComplete: (Boolean) -> Unit) {
+    fun joinTripByCode(joinCode: String, userName: String, userId: String, onComplete: (Boolean) -> Unit) {
         db.collection("trips").whereEqualTo("joinCode", joinCode).limit(1).get()
             .addOnSuccessListener { querySnapshot ->
                 val tripDocument = querySnapshot.documents.firstOrNull()
                 tripDocument?.let {
-                    db.collection("trips").document(it.id)
-                        .update("participants", FieldValue.arrayUnion(userId))
-                        .addOnSuccessListener { onComplete(true) }
-                        .addOnFailureListener { onComplete(false) }
+                    val tripRef = db.collection("trips").document(it.id)
+                    tripRef.update(
+                        mapOf(
+                            "participants" to FieldValue.arrayUnion(userName),
+                            "participantsID" to FieldValue.arrayUnion(userId)
+                        )
+                    ).addOnSuccessListener { onComplete(true) }
+                      .addOnFailureListener { onComplete(false) }
                 } ?: onComplete(false)
             }.addOnFailureListener {
                 onComplete(false)
@@ -127,13 +131,31 @@ class FirestoreRepository(private val db: FirebaseFirestore) {
     }
 
     fun addExpenseToTrip(tripId: String, expense: Expense, onComplete: (Boolean) -> Unit) {
-        db.collection("trips").document(tripId)
-            .update("expenses", FieldValue.arrayUnion(expense))
-            .addOnSuccessListener { onComplete(true) }
-            .addOnFailureListener { onComplete(false) }
+        val tripRef = db.collection("trips").document(tripId)
+    
+        db.runTransaction { transaction ->
+            val trip = transaction.get(tripRef).toObject(Trip::class.java)
+            trip?.expenses = (trip?.expenses.orEmpty() + expense).toMutableList()
+            for (transaction in expense.transactions) {
+                val creditorName = transaction.creditorName
+                val debtorName = transaction.debtorName
+                val amount = transaction.amount
+                val existingTransaction = trip?.transactions?.find { it.creditorName == creditorName && it.debtorName == debtorName }
+                if (existingTransaction != null) {
+                    existingTransaction.amount += amount
+                } else {
+                    trip?.transactions?.add(ExpenseTransaction(creditorName, debtorName, amount))
+                }
+            }
+            transaction.set(tripRef, trip!!)
+        }.addOnSuccessListener {
+            onComplete(true)
+        }.addOnFailureListener {
+            onComplete(false)
+        }
     }
 
-    fun updateExpenseInTrip(tripId: String, expense: Expense, onComplete: (Boolean) -> Unit) {
+    fun updateExpenseInTrip(tripId: String, originalExpense: Expense, expense: Expense, onComplete: (Boolean) -> Unit) {
         val tripRef = db.collection("trips").document(tripId)
         db.runTransaction { transaction ->
             val snapshot = transaction.get(tripRef)
@@ -143,7 +165,29 @@ class FirestoreRepository(private val db: FirebaseFirestore) {
                 date = expense.date
                 amount = expense.amount
                 payer = expense.payer
+                transactions = expense.transactions
             }
+    
+            // Update the transactions
+            originalExpense.transactions.forEach { originalTransaction ->
+                val existingTransaction = trip?.transactions?.find { it.creditorName == originalTransaction.creditorName && it.debtorName == originalTransaction.debtorName }
+                existingTransaction?.let {
+                    it.amount -= originalTransaction.amount
+                    if (it.amount <= 0) {
+                        trip.transactions.remove(it)
+                    }
+                }
+            }
+    
+            expense.transactions.forEach { newTransaction ->
+                val existingTransaction = trip?.transactions?.find { it.creditorName == newTransaction.creditorName && it.debtorName == newTransaction.debtorName }
+                if (existingTransaction != null) {
+                    existingTransaction.amount += newTransaction.amount
+                } else {
+                    trip?.transactions?.add(ExpenseTransaction(newTransaction.creditorName, newTransaction.debtorName, newTransaction.amount))
+                }
+            }
+    
             if (trip != null) {
                 transaction.set(tripRef, trip)
             }
@@ -166,12 +210,30 @@ class FirestoreRepository(private val db: FirebaseFirestore) {
             onComplete(null) // Handle failure
         }
     }
+
     fun deleteExpenseFromTrip(tripId: String, expenseId: String, onComplete: (Boolean) -> Unit) {
         val tripRef = db.collection("trips").document(tripId)
         db.runTransaction { transaction ->
             val snapshot = transaction.get(tripRef)
             val trip = snapshot.toObject(Trip::class.java)
-            trip?.expenses?.removeIf { it.id == expenseId }
+            val expense = trip?.expenses?.find { it.id == expenseId }
+            expense?.let {
+                // Remove the expense
+                trip.expenses.remove(it)
+    
+                // Update the transactions
+                it.transactions.forEach { expenseTransaction ->
+                    val existingTransaction = trip.transactions.find { transaction ->
+                        transaction.creditorName == expenseTransaction.creditorName && transaction.debtorName == expenseTransaction.debtorName
+                    }
+                    existingTransaction?.let { transaction ->
+                        transaction.amount -= expenseTransaction.amount
+                        if (transaction.amount <= 0) {
+                            trip.transactions.remove(transaction)
+                        }
+                    }
+                }
+            }
             if (trip != null) {
                 transaction.set(tripRef, trip)
             }
@@ -199,4 +261,5 @@ class FirestoreRepository(private val db: FirebaseFirestore) {
             onComplete(emptyList()) // Handle failure
         }
     }
+
 }

@@ -11,10 +11,11 @@ data class Trip(
     val startDate: Long = System.currentTimeMillis(),
     val endDate: Long = System.currentTimeMillis(),
     val events: MutableList<Event> = mutableListOf(),
-    val expenses: MutableList<Expense> = mutableListOf(),
+    var expenses: MutableList<Expense> = mutableListOf(),
     var participantsID: MutableList<String> = mutableListOf(),
     var participants: MutableList<String> = mutableListOf(),
-    val destination: String = ""
+    val destination: String = "",
+    var transactions: MutableList<ExpenseTransaction> = mutableListOf()
 )
 
 fun generateJoinCode(): String {
@@ -37,11 +38,23 @@ data class Event(
     var travelMethod: TravelMethod = TravelMethod.WALK // Assume WALK as default
 )
 
+data class ExpenseTransaction(
+    val creditorName: String = "",
+    val debtorName: String = "",
+    var amount: Double = 0.0
+)
+
 data class Expense(
     val id: String = UUID.randomUUID().toString(),
     var title: String = "",
     var date: Long = System.currentTimeMillis(),
     var amount: Double = 0.0,
     var payer: String = "",
-    // var participants: List<String> = emptyList()
+    var type: ExpenseType = ExpenseType.OTHER,
+    var transactions: MutableList<ExpenseTransaction> = mutableListOf(),
+    var isSettled: Boolean = false
 )
+
+enum class ExpenseType {
+    FOOD, ENTERTAINMENT, TRANSPORTATION, OTHER
+}

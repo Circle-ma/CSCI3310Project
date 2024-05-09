@@ -43,7 +43,7 @@ fun HomeView(
                 onValueChange = { joinCode = it },
                 label = { Text("Enter Trip Join Code") })
             Button(onClick = {
-                firestoreRepository.joinTripByCode(joinCode, user.id) { isSuccess ->
+                firestoreRepository.joinTripByCode(joinCode, user.name, user.id) { isSuccess ->
                     if (isSuccess) {
                         Toast.makeText(context, "Successfully joined trip", Toast.LENGTH_SHORT)
                             .show()

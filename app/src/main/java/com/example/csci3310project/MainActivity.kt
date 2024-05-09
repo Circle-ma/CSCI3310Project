@@ -1,5 +1,6 @@
 package com.example.csci3310project
 
+import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -31,6 +32,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@SuppressLint("UnrememberedMutableState")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AppNavigator() {
@@ -99,6 +101,11 @@ fun AppNavigator() {
         }
         composable("expenseDetails/{tripId}") { backStackEntry ->
             ExpenseDetailsView(
+                backStackEntry.arguments?.getString("tripId")!!, firestoreRepository, navController
+            )
+        }
+        composable("expensesReport/{tripId}") { backStackEntry ->
+            ExpenseReportView(
                 backStackEntry.arguments?.getString("tripId")!!, firestoreRepository, navController
             )
         }
