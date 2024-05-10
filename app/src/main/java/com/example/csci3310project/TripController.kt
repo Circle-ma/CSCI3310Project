@@ -139,12 +139,13 @@ class FirestoreRepository(private val db: FirebaseFirestore) {
             for (transaction in expense.transactions) {
                 val creditorName = transaction.creditorName
                 val debtorName = transaction.debtorName
+                val currency = transaction.currency
                 val amount = transaction.amount
-                val existingTransaction = trip?.transactions?.find { it.creditorName == creditorName && it.debtorName == debtorName }
+                val existingTransaction = trip?.transactions?.find { it.creditorName == creditorName && it.debtorName == debtorName && it.currency == currency}
                 if (existingTransaction != null) {
                     existingTransaction.amount += amount
                 } else {
-                    trip?.transactions?.add(ExpenseTransaction(creditorName, debtorName, amount))
+                    trip?.transactions?.add(ExpenseTransaction(creditorName, debtorName, currency, amount))
                 }
             }
             transaction.set(tripRef, trip!!)
@@ -163,6 +164,7 @@ class FirestoreRepository(private val db: FirebaseFirestore) {
             trip?.expenses?.find { it.id == expense.id }?.apply {
                 title = expense.title
                 date = expense.date
+                currency = expense.currency
                 amount = expense.amount
                 payer = expense.payer
                 transactions = expense.transactions
@@ -170,7 +172,7 @@ class FirestoreRepository(private val db: FirebaseFirestore) {
     
             // Update the transactions
             originalExpense.transactions.forEach { originalTransaction ->
-                val existingTransaction = trip?.transactions?.find { it.creditorName == originalTransaction.creditorName && it.debtorName == originalTransaction.debtorName }
+                val existingTransaction = trip?.transactions?.find { it.creditorName == originalTransaction.creditorName && it.debtorName == originalTransaction.debtorName && it.currency == originalTransaction.currency}
                 existingTransaction?.let {
                     it.amount -= originalTransaction.amount
                     if (it.amount <= 0) {
@@ -180,11 +182,11 @@ class FirestoreRepository(private val db: FirebaseFirestore) {
             }
     
             expense.transactions.forEach { newTransaction ->
-                val existingTransaction = trip?.transactions?.find { it.creditorName == newTransaction.creditorName && it.debtorName == newTransaction.debtorName }
+                val existingTransaction = trip?.transactions?.find { it.creditorName == newTransaction.creditorName && it.debtorName == newTransaction.debtorName && it.currency == newTransaction.currency}
                 if (existingTransaction != null) {
                     existingTransaction.amount += newTransaction.amount
                 } else {
-                    trip?.transactions?.add(ExpenseTransaction(newTransaction.creditorName, newTransaction.debtorName, newTransaction.amount))
+                    trip?.transactions?.add(ExpenseTransaction(newTransaction.creditorName, newTransaction.debtorName, newTransaction.currency, newTransaction.amount))
                 }
             }
     

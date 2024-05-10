@@ -1,9 +1,8 @@
 package com.example.csci3310project
 
-import android.app.TimePickerDialog
+import ExchangeRateManager
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,14 +14,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Edit
@@ -31,7 +25,6 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -49,22 +42,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -73,9 +59,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.volley.toolbox.Volley
 import com.example.csci3310project.ui.theme.*
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -182,40 +167,46 @@ fun ExpenseItem(expense: Expense, onExpenseEdit: () -> Unit, onExpenseDelete: ()
                     text = "Date: ${formatDate(expense.date)}",
                     style = MaterialTheme.typography.bodyMedium
                 )
-                // if this expense's transactions involve current user, show the text that says "You owe ${amount} to ${creditorName}"
-                // if this expense's payer is current user, show the text that says "${creditorName} owes you ${amount}"
                 val user = Firebase.auth.currentUser
                 val transactions = expense.transactions
-//                val userTransactions = transactions.filter { it.debtorName == user?.displayName ?: "" || it.creditorName == user?.displayName ?: "" }
-                transactions.forEach { transaction ->
-                    val creditorName = transaction.creditorName
-                    val debtorName = transaction.debtorName
-                    val amount = transaction.amount
-                    if (user != null) {
-                        if (creditorName == user.displayName && debtorName == user.displayName || expense.isSettled == true) {
-                            Text(
-                                text = "Settled",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Black
-                            )
-                        }else if (creditorName == user.displayName) {
-                            Text(
-                                text = "$debtorName owes you $amount",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Teal500
-                            )
-                        } else if (debtorName == user.displayName) {
-                            Text(
-                                text = "You owe $amount to $creditorName",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Red
-                            )
-                        } else {
-                            Text(
-                                text = "Not involved",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Gray
-                            )
+                if (transactions.isEmpty()) {
+                    Text(
+                        text = "You paid ${expense.currency} ${expense.amount}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Black
+                    )
+                } else {
+                    transactions.forEach { transaction ->
+                        val creditorName = transaction.creditorName
+                        val debtorName = transaction.debtorName
+                        val currency = transaction.currency
+                        val amount = transaction.amount
+                        if (user != null) {
+                            if (creditorName == user.displayName && debtorName == user.displayName || expense.isSettled == true) {
+                                Text(
+                                    text = "Settled",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.Black
+                                )
+                            } else if (creditorName == user.displayName) {
+                                Text(
+                                    text = "$debtorName owes you $currency $amount",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Teal500
+                                )
+                            } else if (debtorName == user.displayName) {
+                                Text(
+                                    text = "You owe $currency $amount to $creditorName",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.Red
+                                )
+                            } else {
+                                Text(
+                                    text = "Not involved",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.Gray
+                                )
+                            }
                         }
                     }
                 }
@@ -245,6 +236,14 @@ fun ExpenseTypeIcon(expenseType: ExpenseType) {
     }
 }
 
+fun String.isNumeric(): Boolean {
+    return this.matches("\\d+(\\.\\d+)?".toRegex())
+}
+
+fun String.isPositive(): Boolean {
+    return this.toDouble() > 0
+}
+
 @Composable
 fun AddExpenseView(
     tripId: String, firestoreRepository: FirestoreRepository, navController: NavController
@@ -252,6 +251,7 @@ fun AddExpenseView(
     var participants by remember { mutableStateOf<List<String>>(emptyList()) }
     var title by remember { mutableStateOf("") }
     var date by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var currency by remember { mutableStateOf(Currency.HKD) }
     var amount by remember { mutableStateOf("") }
     var payer by remember { mutableStateOf("") }
     var expenseType by remember { mutableStateOf(ExpenseType.OTHER) }
@@ -278,6 +278,10 @@ fun AddExpenseView(
         DropdownMenuForExpenseType(
             selectedExpenseType = ExpenseType.OTHER,
             onExpenseTypeSelected = { expenseType = it })
+        DropdownMenuForCurrency(
+            selectedCurrency = Currency.HKD,
+            onCurrencySelected = { currency = it }
+        )
         TextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount") })
         DateInput("Date", date) { newDate -> date = newDate }
         Spacer(modifier = Modifier.height(16.dp))
@@ -327,28 +331,94 @@ fun AddExpenseView(
                 }
             }
         }
+        
         Button(onClick = {
-            val transactions = debtors.map { debtor ->
-                ExpenseTransaction(creditorName = payer, debtorName = debtor, amount = debtorAmounts[debtor]?.toDouble() ?: 0.0)
-            }
-            val newExpense = Expense(
-                title = title,
-                date = date,
-                amount = amount.toDouble(),
-                payer = payer,
-                type = expenseType,
-                transactions = transactions.toMutableList()
-            )
-            firestoreRepository.addExpenseToTrip(tripId, newExpense) { isSuccess ->
-                if (isSuccess) {
-                    Toast.makeText(context, "Expense added", Toast.LENGTH_SHORT).show()
-                    navController.popBackStack()
-                } else {
-                    Toast.makeText(context, "Error adding expense", Toast.LENGTH_SHORT).show()
+            // 驗證數據
+            when {
+                title.isBlank() -> {
+                    Toast.makeText(context, "Title cannot be empty", Toast.LENGTH_SHORT).show()
+                }
+                !amount.isNumeric() || !amount.isPositive()-> {
+                    Toast.makeText(context, "Amount must be a positive number", Toast.LENGTH_SHORT).show()
+                }
+                payer.isBlank() -> {
+                    Toast.makeText(context, "Payer cannot be empty", Toast.LENGTH_SHORT).show()
+                }
+                payer in debtors -> {
+                    Toast.makeText(context, "Payer and debtors cannot be the same user", Toast.LENGTH_SHORT).show()
+                }
+                debtors.isNotEmpty() && debtorAmounts.isEmpty() || debtorAmounts.any { it.value == "0" || it.value == "0.0" || it.value == "" || it.value.isBlank() || !it.value.isNumeric() } -> {
+                    Toast.makeText(context, "Debtor amounts must be numbers and cannot be empty", Toast.LENGTH_SHORT).show()
+                }
+                debtors.isNotEmpty() && debtorAmounts.values.sumOf { it.toDouble() } > amount.toDouble() -> {
+                    Toast.makeText(context, "Total sum of debtor amounts cannot be larger than the expense's amount", Toast.LENGTH_SHORT).show()
+                }
+                else -> {
+                    val transactions = debtors.map { debtor ->
+                        ExpenseTransaction(creditorName = payer, debtorName = debtor, currency = currency, amount = debtorAmounts[debtor]?.toDouble() ?: 0.0)
+                    }
+                    val newExpense = Expense(
+                        title = title,
+                        date = date,
+                        currency = currency,
+                        amount = amount.toDouble(),
+                        payer = payer,
+                        type = expenseType,
+                        transactions = transactions.toMutableList()
+                    )
+                    firestoreRepository.addExpenseToTrip(tripId, newExpense) { isSuccess ->
+                        if (isSuccess) {
+                            Toast.makeText(context, "Expense added", Toast.LENGTH_SHORT).show()
+                            navController.popBackStack()
+                        } else {
+                            Toast.makeText(context, "Error adding expense", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
             }
         }, modifier = Modifier.fillMaxWidth()) {
             Text("Add Expense")
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DropdownMenuForCurrency(
+    selectedCurrency: Currency,
+    onCurrencySelected: (Currency) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var selectedOptionText by remember { mutableStateOf(selectedCurrency.name) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+    ) {
+        TextField(
+            modifier = Modifier.menuAnchor(),
+            readOnly = true,
+            value = selectedOptionText,
+            onValueChange = {},
+            label = { Text("Currency") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            colors = ExposedDropdownMenuDefaults.textFieldColors(),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            Currency.values().forEach { currency ->
+                DropdownMenuItem(
+                    text = { Text(currency.name) },
+                    onClick = {
+                        selectedOptionText = currency.name
+                        onCurrencySelected(currency)
+                        expanded = false
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                )
+            }
         }
     }
 }
@@ -489,6 +559,7 @@ fun EditExpenseView(
     var expense by remember { mutableStateOf<Expense?>(null) }
     var title by remember { mutableStateOf("") }
     var date by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var currency by remember { mutableStateOf(Currency.HKD) }
     var amount by remember { mutableStateOf("") }
     var payer by remember { mutableStateOf("") }
     var expenseType by remember { mutableStateOf(ExpenseType.OTHER) }
@@ -508,6 +579,7 @@ fun EditExpenseView(
             if (fetchedExpense != null) {
                 title = fetchedExpense.title
                 date = fetchedExpense.date
+                currency = fetchedExpense.currency
                 amount = fetchedExpense.amount.toString()
                 payer = fetchedExpense.payer
                 expenseType = fetchedExpense.type
@@ -531,6 +603,10 @@ fun EditExpenseView(
             DropdownMenuForExpenseType(
                 selectedExpenseType = expenseType,
                 onExpenseTypeSelected = { expenseType = it })
+            DropdownMenuForCurrency(
+                selectedCurrency = currency,
+                onCurrencySelected = { currency = it }
+            )
             TextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount") })
             DateInput("Date", date) { newDate -> date = newDate }
             Spacer(modifier = Modifier.height(16.dp))
@@ -581,25 +657,49 @@ fun EditExpenseView(
                 }
             }
             Button(onClick = {
-                val transactions = debtors.map { debtor ->
-                    ExpenseTransaction(creditorName = payer, debtorName = debtor, amount = debtorAmounts[debtor]?.toDouble() ?: 0.0)
-                }
-                val updatedExpense = expense?.copy(
-                    title = title,
-                    date = date,
-                    amount = amount.toDouble(),
-                    payer = payer,
-                    type = expenseType,
-                    transactions = transactions.toMutableList()
-                )
-                updatedExpense?.let {
-                    originalExpense?.let { it1 ->
-                        firestoreRepository.updateExpenseInTrip(tripId, it1, it) { isSuccess ->
-                            if (isSuccess) {
-                                Toast.makeText(context, "Expense updated", Toast.LENGTH_SHORT).show()
-                                navController.popBackStack()
-                            } else {
-                                Toast.makeText(context, "Failed to update expense", Toast.LENGTH_SHORT).show()
+                when {
+                    title.isBlank() -> {
+                        Toast.makeText(context, "Title cannot be empty", Toast.LENGTH_SHORT).show()
+                    }
+                    !amount.isNumeric() || !amount.isPositive() -> {
+                        Toast.makeText(context, "Amount must be a positive number", Toast.LENGTH_SHORT).show()
+                    }
+                    payer.isBlank() -> {
+                        Toast.makeText(context, "Payer cannot be empty", Toast.LENGTH_SHORT).show()
+                    }
+                    payer in debtors -> {
+                        Toast.makeText(context, "Payer and debtors cannot be the same user", Toast.LENGTH_SHORT).show()
+                    }
+                    debtors.isNotEmpty() && debtorAmounts.isEmpty() || debtorAmounts.any { it.value == "0" || it.value == "0.0" || it.value == "" || it.value.isBlank() || !it.value.isNumeric() } -> {
+                        Toast.makeText(context, "Debtor amounts must be numbers and cannot be empty", Toast.LENGTH_SHORT).show()
+                    }
+                    debtors.isNotEmpty() && debtorAmounts.values.sumOf { it.toDouble() } > amount.toDouble() -> {
+                        Toast.makeText(context, "Total sum of debtor amounts cannot be larger than the expense's amount", Toast.LENGTH_SHORT).show()
+                    }
+                    else -> {
+                        Log.d("EditExpenseView", "debtorAmounts[debtor] = $debtorAmounts")
+                        val transactions = debtors.map { debtor ->
+                            ExpenseTransaction(creditorName = payer, debtorName = debtor, currency = currency, amount = debtorAmounts[debtor]?.toDouble() ?: 0.0)
+                        }
+                        val updatedExpense = expense?.copy(
+                            title = title,
+                            date = date,
+                            currency = currency,
+                            amount = amount.toDouble(),
+                            payer = payer,
+                            type = expenseType,
+                            transactions = transactions.toMutableList()
+                        )
+                        updatedExpense?.let {
+                            originalExpense?.let { it1 ->
+                                firestoreRepository.updateExpenseInTrip(tripId, it1, it) { isSuccess ->
+                                    if (isSuccess) {
+                                        Toast.makeText(context, "Expense updated", Toast.LENGTH_SHORT).show()
+                                        navController.popBackStack()
+                                    } else {
+                                        Toast.makeText(context, "Failed to update expense", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             }
                         }
                     }
@@ -687,6 +787,7 @@ fun PieChart(
         }
         DetailsPieChart(
             data = data,
+            percentageData = data.mapValues { (_, value) -> value.toFloat() / totalSum.toFloat() },
             colors = colors
         )
 
@@ -697,6 +798,7 @@ fun PieChart(
 @Composable
 fun DetailsPieChart(
     data: Map<String, Int>,
+    percentageData: Map<String, Float> = emptyMap(),
     colors: List<Color>
 ) {
     Column(
@@ -707,6 +809,7 @@ fun DetailsPieChart(
         data.values.forEachIndexed { index, value ->
             DetailsPieChartItem(
                 data = Pair(data.keys.elementAt(index), value),
+                percentageData = Pair(data.keys.elementAt(index), percentageData.getOrDefault(data.keys.elementAt(index), 0f)),
                 color = colors[index]
             )
         }
@@ -717,6 +820,7 @@ fun DetailsPieChart(
 @Composable
 fun DetailsPieChartItem(
     data: Pair<String, Int>,
+    percentageData: Pair<String, Float> = Pair("", 0f),
     height: Dp = 45.dp,
     color: Color
 ) {
@@ -751,7 +855,9 @@ fun DetailsPieChartItem(
                 )
                 Text(
                     modifier = Modifier.padding(start = 15.dp),
-                    text = data.second.toString(),
+                    // text = data.second.toString(),
+                    // text = data.second.toString() + " (${percentageData.second.times(100).toInt()}%)",
+                    text = data.second.toString() + " (${"%.1f".format(percentageData.second.times(100))}%)",
                     fontWeight = FontWeight.Medium,
                     fontSize = 22.sp,
                     color = Color.Gray
@@ -765,9 +871,13 @@ fun DetailsPieChartItem(
 
 @Composable
 fun ExpenseReportView(
-    tripId: String, firestoreRepository: FirestoreRepository, navController: NavController
+    tripId: String, firestoreRepository: FirestoreRepository, navController: NavController,
 ) {
     var trip by remember { mutableStateOf<Trip?>(null) }
+    val exchangeRateManager = ExchangeRateManager(Volley.newRequestQueue(LocalContext.current))
+    val targetCurrency = Currency.HKD
+    val data = remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    val debts = remember { mutableStateOf<List<String>>(emptyList()) }
     val context = LocalContext.current
 
     // Fetch trip details once when the view appears
@@ -794,33 +904,79 @@ fun ExpenseReportView(
                 )
                 Spacer(modifier = Modifier.height(30.dp))
 
-                val data = mutableMapOf<String, Int>()
-                currentTrip.expenses.forEach { expense ->
-                    data[expense.type.name] = data.getOrDefault(expense.type.name, 0) + expense.amount.toInt()
+                LaunchedEffect(key1 = currentTrip) {
+                    exchangeRateManager.getExchangeRates(targetCurrency.name) { rates ->
+                        val expensesCount = currentTrip.expenses.size
+                        var processedExpenses = 0
+                        val tempData = mutableMapOf<String, Int>()
+            
+                        currentTrip.expenses.forEach { expense ->
+                            exchangeRateManager.convertCurrency(
+                                rates,
+                                expense.currency.name,
+                                targetCurrency.name,
+                                expense.amount
+                            ) { convertedAmount ->
+                                tempData[expense.type.name] = tempData.getOrDefault(expense.type.name, 0) + convertedAmount.toInt()
+                                processedExpenses++
+            
+                                if (processedExpenses == expensesCount) {
+                                    Log.d("ExpenseReportView", "Data: $tempData")
+                                    data.value = tempData
+                                }
+                            }
+                        }
+                    }
                 }
-                PieChart(data = data)
+            
+                PieChart(data = data.value)
 
-                // Use trip.transactions to calculate the total balance of the trip, and display the result for who owes who how much using Card
-                val transactions = currentTrip.transactions
-                val balance = mutableMapOf<String, Double>()
-                transactions.forEach { transaction ->
-                    val creditorName = transaction.creditorName
-                    val debtorName = transaction.debtorName
-                    val amount = transaction.amount
-                    balance[creditorName] = (balance[creditorName] ?: 0.0) + amount
-                    balance[debtorName] = (balance[debtorName] ?: 0.0) - amount
-                }
+                LaunchedEffect(key1 = currentTrip) {
+                    exchangeRateManager.getExchangeRates(targetCurrency.name) { rates ->
+                        val transactions = currentTrip.transactions
+                        val balance = mutableMapOf<String, Double>()
+                        val convertedTransactions = mutableListOf<ExpenseTransaction>()
+                        val transactionsCount = transactions.size
+                        var processedTransactions = 0
 
-                val debts = mutableListOf<String>()
-                balance.forEach { (name, amount) ->
-                    if (amount < 0) {
-                        val debtors = balance.filter { it.value > 0 && it.value >= -amount }
-                        for (debtor in debtors) {
-                            val payment = min(debtor.value, -amount)
-                            debts.add("$name owes ${debtor.key} $payment")
-                            balance[debtor.key] = debtor.value - payment
-                            balance[name] = amount + payment
-                            if (balance[name] == 0.0) break
+                        transactions.forEach { transaction ->
+                            exchangeRateManager.convertCurrency(
+                                rates,
+                                transaction.currency.name,
+                                targetCurrency.name,
+                                transaction.amount
+                            ) { convertedAmount ->
+                                val convertedTransaction = transaction.copy(
+                                    currency = Currency.valueOf(targetCurrency.name),
+                                    amount = convertedAmount
+                                )
+                                convertedTransactions.add(convertedTransaction)
+                                processedTransactions++
+
+                                if (processedTransactions == transactionsCount) {
+                                    // Calculate the balance
+                                    convertedTransactions.forEach { transaction ->
+                                        val creditorName = transaction.creditorName
+                                        val debtorName = transaction.debtorName
+                                        val amount = transaction.amount
+                                        balance[creditorName] = (balance[creditorName] ?: 0.0) + amount
+                                        balance[debtorName] = (balance[debtorName] ?: 0.0) - amount
+                                    }
+
+                                    balance.forEach { (name, amount) ->
+                                        if (amount < 0) {
+                                            val debtors = balance.filter { it.value > 0 && it.value >= -amount }
+                                            for (debtor in debtors) {
+                                                val payment = min(debtor.value, -amount)
+                                                debts.value += ("$name owes ${debtor.key} $targetCurrency $ ${"%.2f".format(payment)}")
+                                                balance[debtor.key] = debtor.value - payment
+                                                balance[name] = amount + payment
+                                                if (balance[name] == 0.0) break
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -835,7 +991,7 @@ fun ExpenseReportView(
                     ) {
                         Text("Trip Balance", style = MaterialTheme.typography.headlineSmall)
                         Spacer(modifier = Modifier.height(8.dp))
-                        debts.forEach { debt ->
+                        debts.value.forEach { debt ->
                             Text(
                                 text = debt,
                                 style = MaterialTheme.typography.bodyMedium
