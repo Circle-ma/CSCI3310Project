@@ -25,7 +25,21 @@ fun generateJoinCode(): String {
 
 
 enum class TravelMethod {
-    WALK, CAR, PUBLIC_TRANSPORT
+    WALK {
+        override fun toString(): String {
+            return "walking"
+        }
+    },
+    CAR {
+        override fun toString(): String {
+            return "driving"
+        }
+    },
+    PUBLIC_TRANSPORT {
+        override fun toString(): String {
+            return "transit"
+        }
+    };
 }
 
 data class Event(

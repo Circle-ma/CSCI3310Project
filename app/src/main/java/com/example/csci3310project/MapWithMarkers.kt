@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -78,15 +79,32 @@ fun MapWithMarkers(destination: String, events: List<Event>?, modifier: Modifier
         events
     }
     val locations = remember { mutableListOf<LatLng>() }
-    eventsData.forEach { event ->
-        val location = event.location?.let { getLocationFromAddress(context, it, destination) }
-        location?.let {
-            locations.add(it)
-        }
-    }
+    val points = remember{ mutableListOf<LatLng>() }
     val bounds = calculateCameraBounds(locations)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(bounds.center, DEFAULT_ZOOM)
+    }
+    LaunchedEffect(key1 = eventsData) {
+        eventsData.forEach { event ->
+            val location = event.location?.let { getLocationFromAddress(context, it, destination) }
+            location?.let {
+                locations.add(it)
+            }
+        }
+        locations.zip(eventsData).windowed(2) { pair: List<Pair<LatLng, Event>> ->
+            getDirection(pair[0].first, pair[1].first, pair[1].second.travelMethod.toString(), (pair[1].second.startTime / 1000).toInt()) { it: DirectionsResponse? ->
+                Log.d(TAG, it.toString())
+                if (it != null && it.routes.isNotEmpty()) {
+                    val pointList = decodePolyline(it.routes.first().overview_polyline.points)
+                    if(pointList.isNotEmpty())
+                    {
+                        points.addAll(pointList)
+                    }
+                }
+            }
+        }
+        val newBounds = calculateCameraBounds(locations)
+        cameraPositionState.position = CameraPosition.fromLatLngZoom(newBounds.center, DEFAULT_ZOOM)
     }
     if(selectEventId.value != null)
     {
@@ -101,6 +119,7 @@ fun MapWithMarkers(destination: String, events: List<Event>?, modifier: Modifier
         }
         false
     }
+
     Box(
         modifier
     ) {
@@ -117,7 +136,7 @@ fun MapWithMarkers(destination: String, events: List<Event>?, modifier: Modifier
             CreateMarkers(eventsData, locations)
 
             Polyline(
-                points = locations,
+                points = points.toList(),
                 clickable = true,
                 color = Color.Blue,
                 width = 5f,
@@ -136,7 +155,14 @@ fun MapWithMarkers(destination: String, events: List<Event>?, modifier: Modifier
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier
-                        .background(Color(ContextCompat.getColor(LocalContext.current, R.color.black)))
+                        .background(
+                            Color(
+                                ContextCompat.getColor(
+                                    LocalContext.current,
+                                    R.color.black
+                                )
+                            )
+                        )
                         .wrapContentSize()
                 )
             }
@@ -232,5 +258,36 @@ fun calculateCameraBounds(locations: List<LatLng>): LatLngBounds {
     val bounds = builder.build()
 
     return bounds
+}
+
+fun decodePolyline(encodedPath: String): List<LatLng> {
+    val poly = mutableListOf<LatLng>()
+    var index = 0
+    val len = encodedPath.length
+    var lat = 0
+    var lng = 0
+
+    while (index < len) {
+        var result = 1
+        var shift = 0
+        var b: Int
+        do {
+            b = encodedPath[index++].toInt() - 63 - 1
+            result += b shl shift
+            shift += 5
+        } while (b >= 0x1f)
+        lat += if (result and 1 != 0) (result shr 1).inv() else result shr 1
+        result = 1
+        shift = 0
+        do {
+            b = encodedPath[index++].toInt() - 63 - 1
+            result += b shl shift
+            shift += 5
+        } while (b >= 0x1f)
+        lng += if (result and 1 != 0) (result shr 1).inv() else result shr 1
+        val latLng = LatLng(lat.toDouble() / 1E5, lng.toDouble() / 1E5)
+        poly.add(latLng)
+    }
+    return poly
 }
 
