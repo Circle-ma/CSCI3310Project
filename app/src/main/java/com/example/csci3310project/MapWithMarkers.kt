@@ -129,8 +129,11 @@ fun MapWithMarkers(destination: String, events: List<Event>?, modifier: Modifier
     if(selectEventId.value != null)
     {
         val e = eventsData.find{it.id == selectEventId.value}
-        cameraPositionState.position = e?.location?.let { getLocationFromAddress(context, it, destination) }
-            ?.let { CameraPosition.fromLatLngZoom(it, DEFAULT_ZOOM) }!!
+        if(e != null)
+        {
+            cameraPositionState.position = e.location?.let { getLocationFromAddress(context, it, destination) }
+                ?.let { CameraPosition.fromLatLngZoom(it, DEFAULT_ZOOM) }!!
+        }
     }
 
     Box(
