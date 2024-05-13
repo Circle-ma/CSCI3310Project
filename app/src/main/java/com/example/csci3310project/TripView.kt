@@ -101,7 +101,9 @@ fun TripView(
                     // Navigate to TripDetailsView and remove only this TripView from the back stack
                     navController.navigate("tripDetails/$tripId") {
                         // Pop only the TripView off the stack
-                        popUpTo(navController.currentBackStackEntry?.destination?.route ?: "tripView") {
+                        popUpTo(
+                            navController.currentBackStackEntry?.destination?.route ?: "tripView"
+                        ) {
                             inclusive = true // This ensures TripView is removed from the stack
                         }
                     }
@@ -123,8 +125,14 @@ fun TripDetailsView(
     tripId: String, firestoreRepository: FirestoreRepository, navController: NavController
 ) {
     var trip by remember { mutableStateOf<Trip?>(null) }
-    val selectEventId: MutableState<String?> = mutableStateOf(null)
+    val selectEventId: MutableState<String?> = remember {
+        mutableStateOf(null)
+    }
+    var scroll by remember {
+        mutableStateOf(true)
+    }
     val context = LocalContext.current
+
 
     // Fetch trip details once when the view appears
     LaunchedEffect(key1 = tripId) {
@@ -136,36 +144,36 @@ fun TripDetailsView(
     trip?.let { currentTrip ->
         val tripStartDate =
             Instant.ofEpochMilli(currentTrip.startDate).atZone(ZoneId.systemDefault()).toLocalDate()
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState(),true)
+
         ) {
-            item {
-                Text(
-                    "Trip: ${currentTrip.title} (${currentTrip.destination})",
-                    style = MaterialTheme.typography.headlineMedium
-                )
-                Text(
-                    "Period: ${formatDate(currentTrip.startDate)} - ${formatDate(currentTrip.endDate)}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Button(
-                    onClick = { navController.navigate("editTrip/$tripId") },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Edit Trip Details")
-                }
-                MapWithMarkers(
-                    events = currentTrip.events,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .height(200.dp),
-                    destination = currentTrip.destination,
-                    selectEventId = selectEventId
-                )
-                Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                "Trip: ${currentTrip.title} (${currentTrip.destination})",
+                style = MaterialTheme.typography.headlineMedium
+            )
+            Text(
+                "Period: ${formatDate(currentTrip.startDate)} - ${formatDate(currentTrip.endDate)}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Button(
+                onClick = { navController.navigate("editTrip/$tripId") },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Edit Trip Details")
             }
+            MapWithMarkers(
+                events = currentTrip.events,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                destination = currentTrip.destination,
+                selectEventId = selectEventId
+            )
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Grouping events by LocalDate and sorting by start time within each day
             val groupedEvents = currentTrip.events.groupBy { event ->
@@ -177,14 +185,12 @@ fun TripDetailsView(
             groupedEvents.forEach { (date, events) ->
                 val dayNumber =
                     ChronoUnit.DAYS.between(tripStartDate, date) + 1  // Calculate the day number
-                item {
-                    Text(
-                        "Day $dayNumber: ${date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))}",
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                    )
-                }
-                items(events) { event ->
+                Text(
+                    "Day $dayNumber: ${date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))}",
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                )
+                events.forEach { event ->
                     EventItem(event = event,
                         onEdit = { navController.navigate("editEvent/${event.id}/${tripId}") },
                         onDelete = {
@@ -201,36 +207,32 @@ fun TripDetailsView(
                         },
                         onClick = {
                             selectEventId.value = event.id
-                            Log.d("ARRRR",selectEventId.value.toString())
-                        }
-                    )
+                        })
                 }
             }
 
-            item {
-                Spacer(modifier = Modifier.height(10.dp))
-                Button(onClick = { navController.navigate("addEvent/$tripId") }) {
-                    Text("Add Event")
-                }
-                Button(onClick = { navController.navigate("expenseDetails/$tripId") }) {
-                    Text("View Expenses")
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(
-                    onClick = {
-                        firestoreRepository.deleteTrip(tripId) { isSuccess ->
-                            if (isSuccess) {
-                                navController.popBackStack()
-                                Toast.makeText(context, "Trip deleted", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(context, "Failed to delete trip", Toast.LENGTH_SHORT)
-                                    .show()
-                            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(onClick = { navController.navigate("addEvent/$tripId") }) {
+                Text("Add Event")
+            }
+            Button(onClick = { navController.navigate("expenseDetails/$tripId") }) {
+                Text("View Expenses")
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+            Button(
+                onClick = {
+                    firestoreRepository.deleteTrip(tripId) { isSuccess ->
+                        if (isSuccess) {
+                            navController.popBackStack()
+                            Toast.makeText(context, "Trip deleted", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Failed to delete trip", Toast.LENGTH_SHORT)
+                                .show()
                         }
-                    }, modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Delete Trip")
-                }
+                    }
+                }, modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Delete Trip")
             }
         }
     } ?: Text("Loading Trip Details...", style = MaterialTheme.typography.headlineSmall)
@@ -242,8 +244,7 @@ fun EventItem(event: Event, onEdit: () -> Unit, onDelete: () -> Unit, onClick: (
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
-        onClick = onClick
+            .padding(8.dp), onClick = onClick
     ) {
         Row(
             modifier = Modifier
@@ -521,50 +522,58 @@ fun EditTripDetailsView(
         }
     }
 
-    trip?.let { currentTrip ->
-        var editableTitle by remember { mutableStateOf(currentTrip.title) }
-        var editableDestination by remember { mutableStateOf(currentTrip.destination) }
-        var editableStartDate by remember { mutableLongStateOf(currentTrip.startDate) }
-        var editableEndDate by remember { mutableLongStateOf(currentTrip.endDate) }
+    Box(
+        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+    ) {
+        trip?.let { currentTrip ->
+            var editableTitle by remember { mutableStateOf(currentTrip.title) }
+            var editableDestination by remember { mutableStateOf(currentTrip.destination) }
+            var editableStartDate by remember { mutableLongStateOf(currentTrip.startDate) }
+            var editableEndDate by remember { mutableLongStateOf(currentTrip.endDate) }
 
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-        ) {
-            TextField(value = editableTitle,
-                onValueChange = { editableTitle = it },
-                label = { Text("Title") })
-            TextField(value = editableDestination,
-                onValueChange = { editableDestination = it },
-                label = { Text("Destination") })
-            DateInput("Start Date", editableStartDate) { newDate -> editableStartDate = newDate }
-            DateInput("End Date", editableEndDate) { newDate -> editableEndDate = newDate }
-
-            Spacer(modifier = Modifier.height(20.dp))
-            Button(
-                onClick = {
-                    val updatedTrip = currentTrip.copy(
-                        title = editableTitle,
-                        destination = editableDestination,
-                        startDate = editableStartDate,
-                        endDate = editableEndDate
-                    )
-                    firestoreRepository.updateTrip(tripId, updatedTrip) { isSuccess ->
-                        if (isSuccess) {
-                            navController.popBackStack()
-                            Toast.makeText(context, "Trip updated successfully", Toast.LENGTH_SHORT)
-                                .show()
-                        } else {
-                            Toast.makeText(context, "Failed to update trip", Toast.LENGTH_SHORT)
-                                .show()
-                        }
-                    }
-                }, modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Save Changes")
+                TextField(value = editableTitle,
+                    onValueChange = { editableTitle = it },
+                    label = { Text("Title") })
+                TextField(value = editableDestination,
+                    onValueChange = { editableDestination = it },
+                    label = { Text("Destination") })
+                DateInput("Start Date", editableStartDate) { newDate ->
+                    editableStartDate = newDate
+                }
+                DateInput("End Date", editableEndDate) { newDate -> editableEndDate = newDate }
+
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(
+                    onClick = {
+                        val updatedTrip = currentTrip.copy(
+                            title = editableTitle,
+                            destination = editableDestination,
+                            startDate = editableStartDate,
+                            endDate = editableEndDate
+                        )
+                        firestoreRepository.updateTrip(tripId, updatedTrip) { isSuccess ->
+                            if (isSuccess) {
+                                navController.popBackStack()
+                                Toast.makeText(
+                                    context, "Trip updated successfully", Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                Toast.makeText(context, "Failed to update trip", Toast.LENGTH_SHORT)
+                                    .show()
+                            }
+                        }
+                    }, modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Save Changes")
+                }
             }
+
         }
     } ?: Text("Loading Trip Details...", style = MaterialTheme.typography.bodyLarge)
 }

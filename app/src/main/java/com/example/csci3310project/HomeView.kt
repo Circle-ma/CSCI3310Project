@@ -58,9 +58,6 @@ fun HomeView(
             Button(onClick = { navController.navigate("trip") }) {
                 Text("Plan a Trip")
             }
-            Button(onClick = onNavigateToFakeMap) {
-                Text("Fake Map")
-            }
             Button(onClick = { authController.logout() }) {
                 Text("Logout")
             }
