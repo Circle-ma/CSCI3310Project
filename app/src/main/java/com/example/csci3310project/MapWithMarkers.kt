@@ -111,6 +111,7 @@ fun MapWithMarkers(destination: String, events: List<Event>?, modifier: Modifier
                 colorMap[date] = colorList[colorMap.size % colorList.size]
             }
         }
+        points.clear()
         locations.zip(eventsData).windowed(2) { pair: List<Pair<LatLng, Event>> ->
             getDirection(pair[0].first, pair[1].first, pair[1].second.travelMethod.toString(), (pair[1].second.startTime / 1000).toInt()) { it: DirectionsResponse? ->
                 Log.d(TAG, it.toString())
