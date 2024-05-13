@@ -270,8 +270,7 @@ fun AddExpenseView(
         modifier = Modifier
             .padding(16.dp)
             .fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+        horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Add Expense", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
         TextField(value = title, onValueChange = { title = it }, label = { Text("Expense Title") })
@@ -934,10 +933,12 @@ fun ExpenseReportView(
                 LaunchedEffect(key1 = currentTrip) {
                     exchangeRateManager.getExchangeRates(targetCurrency.name) { rates ->
                         val transactions = currentTrip.transactions
-                        val balance = mutableMapOf<String, Double>()
+                        var balance = mutableMapOf<String, Double>()
                         val convertedTransactions = mutableListOf<ExpenseTransaction>()
                         val transactionsCount = transactions.size
                         var processedTransactions = 0
+
+                        debts.value = emptyList()
 
                         transactions.forEach { transaction ->
                             exchangeRateManager.convertCurrency(
