@@ -71,12 +71,17 @@ fun MapWithMarkers(destination: String, events: List<Event>?, modifier: Modifier
     val TAG = "Map"
     var isMapLoaded by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val eventsData = if (events == null)
+    val tempData = if (events == null)
     {
         generateFakeEvents()
     }else{
         events
     }
+    val eventsData = tempData.groupBy { event ->
+        Instant.ofEpochMilli(event.date).atZone(ZoneId.systemDefault()).toLocalDate()
+    }.mapValues { (_, events) ->
+        events.sortedBy { it.startTime }
+    }.toList().sortedBy { it.first }.flatMap { it.second }
     val locations = remember { mutableListOf<LatLng>() }
     val points = remember{ mutableListOf<LatLng>() }
     val bounds = calculateCameraBounds(locations)
