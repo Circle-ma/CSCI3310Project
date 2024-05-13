@@ -169,6 +169,7 @@ fun ExpenseItem(expense: Expense, onExpenseEdit: () -> Unit, onExpenseDelete: ()
                 )
                 val user = Firebase.auth.currentUser
                 val transactions = expense.transactions
+                var isInvolvedOrIsShown = false
                 if (transactions.isEmpty()) {
                     Text(
                         text = "You paid ${expense.currency} ${expense.amount}",
@@ -181,6 +182,7 @@ fun ExpenseItem(expense: Expense, onExpenseEdit: () -> Unit, onExpenseDelete: ()
                         val debtorName = transaction.debtorName
                         val currency = transaction.currency
                         val amount = transaction.amount
+                        
                         if (user != null) {
                             if (creditorName == user.displayName && debtorName == user.displayName || expense.isSettled == true) {
                                 Text(
@@ -188,24 +190,30 @@ fun ExpenseItem(expense: Expense, onExpenseEdit: () -> Unit, onExpenseDelete: ()
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = Color.Black
                                 )
+                                isInvolvedOrIsShown = true
                             } else if (creditorName == user.displayName) {
                                 Text(
                                     text = "$debtorName owes you $currency $amount",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = Teal500
                                 )
+                                isInvolvedOrIsShown = true
                             } else if (debtorName == user.displayName) {
                                 Text(
                                     text = "You owe $currency $amount to $creditorName",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = Color.Red
                                 )
+                                isInvolvedOrIsShown = true
                             } else {
-                                Text(
-                                    text = "Not involved",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.Gray
-                                )
+                                if (isInvolvedOrIsShown == false) {
+                                    Text(
+                                        text = "Not involved",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.Gray
+                                    )
+                                    isInvolvedOrIsShown = true
+                                }
                             }
                         }
                     }
@@ -966,7 +974,8 @@ fun ExpenseReportView(
 
                                     balance.forEach { (name, amount) ->
                                         if (amount < 0) {
-                                            val debtors = balance.filter { it.value > 0 && it.value >= -amount }
+                                            // val debtors = balance.filter { it.value > 0 && it.value >= -amount }
+                                            val debtors = balance.filter { it.value > 0 }
                                             for (debtor in debtors) {
                                                 val payment = min(debtor.value, -amount)
                                                 debts.value += ("$name owes ${debtor.key} $targetCurrency $ ${"%.2f".format(payment)}")
