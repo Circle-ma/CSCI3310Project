@@ -30,7 +30,6 @@ import com.google.android.gms.maps.GoogleMapOptions
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
-import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.PinConfig
 import com.google.maps.android.compose.AdvancedMarker
 import com.google.maps.android.compose.GoogleMap
@@ -84,11 +83,27 @@ fun MapWithMarkers(destination: String, events: List<Event>?, modifier: Modifier
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(bounds.center, DEFAULT_ZOOM)
     }
+    val colorList = listOf(
+        Color(ContextCompat.getColor(LocalContext.current, R.color.red)),
+        Color(ContextCompat.getColor(LocalContext.current, R.color.blue)),
+        Color(ContextCompat.getColor(LocalContext.current, R.color.yellow)),
+        Color(ContextCompat.getColor(LocalContext.current, R.color.green)),
+        Color(ContextCompat.getColor(LocalContext.current, R.color.purple_200)),
+        Color(ContextCompat.getColor(LocalContext.current, R.color.light_green)),
+        Color(ContextCompat.getColor(LocalContext.current, R.color.purple_700)),
+    )
+    val colorMap: MutableMap<String, Color> = remember {mutableMapOf()}
     LaunchedEffect(key1 = eventsData) {
         eventsData.forEach { event ->
             val location = event.location?.let { getLocationFromAddress(context, it, destination) }
             location?.let {
                 locations.add(it)
+            }
+            val date = Instant.ofEpochMilli(event.date).atZone(ZoneId.systemDefault()).toLocalDate().toString()
+
+            if (!colorMap.containsKey(date)) {
+                // If the date doesn't exist, assign a color from the list
+                colorMap[date] = colorList[colorMap.size % colorList.size]
             }
         }
         locations.zip(eventsData).windowed(2) { pair: List<Pair<LatLng, Event>> ->
@@ -112,13 +127,6 @@ fun MapWithMarkers(destination: String, events: List<Event>?, modifier: Modifier
         cameraPositionState.position = e?.location?.let { getLocationFromAddress(context, it, destination) }
             ?.let { CameraPosition.fromLatLngZoom(it, DEFAULT_ZOOM) }!!
     }
-    val markerClick: (Marker) -> Boolean = {
-        Log.d(TAG, "${it.title} was clicked")
-        cameraPositionState.projection?.let { projection ->
-            Log.d(TAG, "The current projection is: $projection")
-        }
-        false
-    }
 
     Box(
         modifier
@@ -133,16 +141,14 @@ fun MapWithMarkers(destination: String, events: List<Event>?, modifier: Modifier
                 GoogleMapOptions().mapId("DEMO_MAP_ID")
             },
         ) {
-            CreateMarkers(eventsData, locations)
+
+            CreateMarkers(eventsData, locations, colorMap)
 
             Polyline(
                 points = points.toList(),
                 clickable = true,
                 color = Color.Blue,
-                width = 5f,
-                onClick = { polyline ->
-                    // Handle polyline click event
-                }
+                width = 5f
             )
         }
         if (!isMapLoaded) {
@@ -170,47 +176,32 @@ fun MapWithMarkers(destination: String, events: List<Event>?, modifier: Modifier
     }
 }
 
+
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun CreateMarkers(eventsData: List<Event>, locations: List<LatLng>) {
-    var markerCount = 1
-    val COLOR_LIST = listOf(
-        Color(ContextCompat.getColor(LocalContext.current, R.color.red)),
-        Color(ContextCompat.getColor(LocalContext.current, R.color.blue)),
-        Color(ContextCompat.getColor(LocalContext.current, R.color.yellow)),
-        Color(ContextCompat.getColor(LocalContext.current, R.color.green)),
-        Color(ContextCompat.getColor(LocalContext.current, R.color.purple_200)),
-        Color(ContextCompat.getColor(LocalContext.current, R.color.light_green)),
-        Color(ContextCompat.getColor(LocalContext.current, R.color.purple_700)),
-    )
-    val colorMap: MutableMap<String, Color> = mutableMapOf()
-
+fun CreateMarkers(eventsData: List<Event>, locations: List<LatLng>, colorMap: MutableMap<String, Color>) {
+    var count = 1
     eventsData.zip(locations).forEach { (event, location) ->
-        if (location != null) {
-            val markerState = MarkerState(
-                position = location
-            )
-            val date = Instant.ofEpochMilli(event.date).atZone(ZoneId.systemDefault()).toLocalDate().toString()
-            val markerColor = if (colorMap.containsKey(date))
-            {
-                colorMap[date]
-            }else{
-                colorMap[date] = COLOR_LIST[colorMap.count()%7]
-                colorMap[date]
-            }
-            val glyphOne = PinConfig.Glyph(markerCount.toString(), android.graphics.Color.BLACK)
-            val pinConfig = PinConfig.builder()
-                .setBackgroundColor(markerColor!!.toArgb())
-                .setBorderColor(android.graphics.Color.WHITE)
-                .setGlyph(glyphOne)
-                .build()
-            markerCount++
-            AdvancedMarker(
-                state = markerState,
-                title = event.title,
-                pinConfig = pinConfig
-            )
-        }
+        val date = Instant.ofEpochMilli(event.date).atZone(ZoneId.systemDefault()).toLocalDate().toString()
+        val markerColor = colorMap[date] ?: Color.Red // Default to red if no color found
+
+        val markerState = MarkerState(
+            position = location
+        )
+
+        val glyphOne = PinConfig.Glyph(count.toString(), android.graphics.Color.BLACK)
+        val pinConfig = PinConfig.builder()
+            .setBackgroundColor(markerColor.toArgb())
+            .setBorderColor(android.graphics.Color.WHITE)
+            .setGlyph(glyphOne)
+            .build()
+
+        AdvancedMarker(
+            state = markerState,
+            title = event.title,
+            pinConfig = pinConfig
+        )
+        count++
     }
 }
 
