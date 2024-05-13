@@ -2,7 +2,6 @@ package com.example.csci3310project
 
 import android.app.TimePickerDialog
 import android.os.Build
-import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -28,8 +26,10 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,7 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import java.text.SimpleDateFormat
@@ -148,7 +147,7 @@ fun TripDetailsView(
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState(),true)
+                .verticalScroll(rememberScrollState(), true)
 
         ) {
             Text(
@@ -301,73 +300,89 @@ fun AddEventView(
     var travelMethod by remember { mutableStateOf(TravelMethod.WALK) }
     val context = LocalContext.current
 
-    Column(
-        modifier = Modifier
-            .padding(16.dp)
-            .fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        TextField(value = title, onValueChange = { title = it }, label = { Text("Event Title") })
-        DateInput("Event Date", date) { newDate -> date = newDate }
-        TimeInput("Start Time", startTime) { newStartTime -> startTime = newStartTime }
-        TimeInput("End Time", endTime) { newEndTime -> endTime = newEndTime }
-        TextField(value = location, onValueChange = { location = it }, label = { Text("Location") })
-        DropdownMenuForTravelMethod(travelMethod) { newMethod -> travelMethod = newMethod }
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            TextField(value = title, onValueChange = { title = it }, label = { Text("Event Title") })
+            DateInput("Event Date", date) { newDate -> date = newDate }
+            TimeInput("Start Time", startTime) { newStartTime -> startTime = newStartTime }
+            TimeInput("End Time", endTime) { newEndTime -> endTime = newEndTime }
+            TextField(value = location, onValueChange = { location = it }, label = { Text("Location") })
+            DropdownMenuForTravelMethod(travelMethod) { newMethod -> travelMethod = newMethod }
 
-        Button(onClick = {
-            val newEvent = Event(
-                title = title,
-                date = date,
-                startTime = startTime,
-                endTime = endTime,
-                location = location,
-                travelMethod = travelMethod
-            )
-            firestoreRepository.addEventToTrip(tripId, newEvent) { isSuccess ->
-                if (isSuccess) {
-                    Toast.makeText(context, "Event added", Toast.LENGTH_SHORT).show()
-                    navController.popBackStack()
-                } else {
-                    Toast.makeText(context, "Error adding event", Toast.LENGTH_SHORT).show()
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(onClick = {
+                val newEvent = Event(
+                    title = title,
+                    date = date,
+                    startTime = startTime,
+                    endTime = endTime,
+                    location = location,
+                    travelMethod = travelMethod
+                )
+                firestoreRepository.addEventToTrip(tripId, newEvent) { isSuccess ->
+                    if (isSuccess) {
+                        Toast.makeText(context, "Event added", Toast.LENGTH_SHORT).show()
+                        navController.popBackStack()
+                    } else {
+                        Toast.makeText(context, "Error adding event", Toast.LENGTH_SHORT).show()
+                    }
                 }
+            }, modifier = Modifier.fillMaxWidth()) {
+                Text("Add Event")
             }
-        }, modifier = Modifier.fillMaxWidth()) {
-            Text("Add Event")
         }
     }
 }
 
-@Composable
-fun DropdownMenuForTravelMethod(selectedMethod: TravelMethod, onSelect: (TravelMethod) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    val methods = TravelMethod.entries.toTypedArray()  // Correct way to get all values from an enum
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentSize(Alignment.TopStart)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DropdownMenuForTravelMethod(
+    selectedTravelMethod: TravelMethod,
+    onTravelMethodSelected: (TravelMethod) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var selectedOptionText by remember { mutableStateOf(selectedTravelMethod.name) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
     ) {
-        Text(
-            text = "Travel method: $selectedMethod",
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { expanded = true },
-            textAlign = TextAlign.Left
+        TextField(
+            modifier = Modifier.menuAnchor(),
+            readOnly = true,
+            value = selectedOptionText,
+            onValueChange = {},
+            label = { Text("Travel Method") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            colors = ExposedDropdownMenuDefaults.textFieldColors(),
         )
-        DropdownMenu(
+        ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.fillMaxWidth()
         ) {
-            methods.forEach { method ->
-                DropdownMenuItem({ Text(text = method.name) }, onClick = {
-                    onSelect(method)
-                    expanded = false
-                })
+            TravelMethod.entries.forEach { travelMethod ->
+                DropdownMenuItem(
+                    text = { Text(travelMethod.name) },
+                    onClick = {
+                        selectedOptionText = travelMethod.name
+                        onTravelMethodSelected(travelMethod)
+                        expanded = false
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                )
             }
         }
     }
 }
+
 
 
 @Composable
@@ -386,54 +401,59 @@ fun EditEventView(
         }
     }
 
-    event?.let { currentEvent ->
-        var title by remember { mutableStateOf(currentEvent.title) }
-        var date by remember { mutableLongStateOf(currentEvent.date) }
-        var startTime by remember { mutableLongStateOf(currentEvent.startTime) }
-        var endTime by remember { mutableLongStateOf(currentEvent.endTime) }
-        var location by remember { mutableStateOf(currentEvent.location ?: "") }
-        var travelMethod by remember { mutableStateOf(currentEvent.travelMethod) }
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        event?.let { currentEvent ->
+            var title by remember { mutableStateOf(currentEvent.title) }
+            var date by remember { mutableLongStateOf(currentEvent.date) }
+            var startTime by remember { mutableLongStateOf(currentEvent.startTime) }
+            var endTime by remember { mutableLongStateOf(currentEvent.endTime) }
+            var location by remember { mutableStateOf(currentEvent.location ?: "") }
+            var travelMethod by remember { mutableStateOf(currentEvent.travelMethod) }
 
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            TextField(value = title,
-                onValueChange = { title = it },
-                label = { Text("Event Title") })
-            DateInput("Event Date", date) { newDate -> date = newDate }
-            TimeInput("Start Time", startTime) { newStartTime -> startTime = newStartTime }
-            TimeInput("End Time", endTime) { newEndTime -> endTime = newEndTime }
-            TextField(value = location,
-                onValueChange = { location = it },
-                label = { Text("Location") })
-            DropdownMenuForTravelMethod(travelMethod) { newMethod -> travelMethod = newMethod }
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                TextField(value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Event Title") })
+                DateInput("Event Date", date) { newDate -> date = newDate }
+                TimeInput("Start Time", startTime) { newStartTime -> startTime = newStartTime }
+                TimeInput("End Time", endTime) { newEndTime -> endTime = newEndTime }
+                TextField(value = location,
+                    onValueChange = { location = it },
+                    label = { Text("Location") })
+                DropdownMenuForTravelMethod(travelMethod) { newMethod -> travelMethod = newMethod }
 
-            Button(onClick = {
-                val updatedEvent = currentEvent.copy(
-                    title = title,
-                    date = date,
-                    startTime = startTime,
-                    endTime = endTime,
-                    location = location,
-                    travelMethod = travelMethod
-                )
-                firestoreRepository.updateEventInTrip(tripId, updatedEvent) { isSuccess ->
-                    if (isSuccess) {
-                        Toast.makeText(context, "Event updated", Toast.LENGTH_SHORT).show()
-                        navController.popBackStack()
-                    } else {
-                        Toast.makeText(context, "Failed to update event", Toast.LENGTH_SHORT).show()
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(onClick = {
+                    val updatedEvent = currentEvent.copy(
+                        title = title,
+                        date = date,
+                        startTime = startTime,
+                        endTime = endTime,
+                        location = location,
+                        travelMethod = travelMethod
+                    )
+                    firestoreRepository.updateEventInTrip(tripId, updatedEvent) { isSuccess ->
+                        if (isSuccess) {
+                            Toast.makeText(context, "Event updated", Toast.LENGTH_SHORT).show()
+                            navController.popBackStack()
+                        } else {
+                            Toast.makeText(context, "Failed to update event", Toast.LENGTH_SHORT).show()
+                        }
                     }
+                }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Save Changes")
                 }
-            }, modifier = Modifier.fillMaxWidth()) {
-                Text("Save Changes")
             }
-        }
-    } ?: Text("Loading Event Details...", style = MaterialTheme.typography.headlineSmall)
+        } ?: Text("Loading Event Details...", style = MaterialTheme.typography.headlineSmall)
+    }
 }
+
 
 @Composable
 fun TimeInput(label: String, timeMillis: Long, onTimeChanged: (Long) -> Unit) {
@@ -575,7 +595,7 @@ fun EditTripDetailsView(
             }
 
         }
-    } ?: Text("Loading Trip Details...", style = MaterialTheme.typography.bodyLarge)
+    }
 }
 
 

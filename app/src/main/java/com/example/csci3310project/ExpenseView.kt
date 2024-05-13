@@ -533,7 +533,7 @@ fun DropdownMenuForExpenseType(
             expanded = expanded,
             onDismissRequest = { expanded = false },
         ) {
-            ExpenseType.values().forEach { expenseType ->
+            ExpenseType.entries.forEach { expenseType ->
                 DropdownMenuItem(
                     text = { Text(expenseType.name) },
                     onClick = {
