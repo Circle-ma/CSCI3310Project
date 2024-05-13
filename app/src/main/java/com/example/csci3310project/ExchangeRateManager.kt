@@ -1,3 +1,5 @@
+package com.example.csci3310project
+
 import android.util.Log
 import com.android.volley.Request
 import com.android.volley.RequestQueue
@@ -7,7 +9,7 @@ import com.google.gson.Gson
 
 class ExchangeRateManager(private val queue: RequestQueue) {
     private val gson = Gson()
-    private val url = "https://v6.exchangerate-api.com/v6/637178fd9b6dcad278507450/latest/"
+    private val url = "https://v6.exchangerate-api.com/v6/" + BuildConfig.EXCHANGE_RATE_API_KEY + "/latest/"
     private val exchangeRatesCache = mutableMapOf<String, ExchangeRates>()
 
     fun getExchangeRates(baseCurrency: String, callback: (ExchangeRates) -> Unit) {
