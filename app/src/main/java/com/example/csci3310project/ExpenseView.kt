@@ -1,6 +1,5 @@
 package com.example.csci3310project
 
-import ExchangeRateManager
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement

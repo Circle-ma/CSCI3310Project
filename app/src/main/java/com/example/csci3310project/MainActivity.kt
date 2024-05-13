@@ -1,6 +1,5 @@
 package com.example.csci3310project
 
-import ExchangeRateManager
 import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
